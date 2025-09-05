@@ -1,0 +1,13 @@
+vendor,cost_per_km,emission_per_km,reliability_score,delivery_speed,service_quality,max_capacity_kg,insurance_coverage,fleet_size,geographic_coverage,specialization,certification,contact_phone,contact_email,established_year,headquarters_city,emergency_support,tracking_system,fuel_type,payment_terms,customer_rating
+LogiTech Express,2.5,0.8,8.5,Standard,8.0,5000,1000000,45,Pan-India,General,ISO9001,+91-9876543210,ops@logitech.in,2015,Mumbai,24/7,GPS+Mobile,Diesel,Net-30,4.2
+GreenShip Co,3.2,0.3,9.2,Eco,9.0,3000,800000,25,North+West,Eco-Friendly,ISO14001,+91-9876543211,green@greenship.in,2018,Delhi,Business-Hours,GPS+RFID,Electric+CNG,Net-15,4.7
+FastTrack Logistics,2.8,0.6,7.8,Fast,7.5,8000,1200000,80,Pan-India,Express,ISO9001,+91-9876543212,fast@fasttrack.in,2012,Bangalore,24/7,GPS+Mobile,Diesel,Net-45,4.0
+EcoFreight Solutions,3.5,0.2,9.5,Eco+,9.2,4000,900000,30,South+East,Sustainable,ISO14001+ISO45001,+91-9876543213,eco@ecofreight.in,2020,Chennai,24/7,IoT+Blockchain,Electric,Net-30,4.8
+SpeedyDelivery,2.3,0.9,7.2,Express,6.8,6000,600000,60,Metro-Cities,Last-Mile,None,+91-9876543214,speed@speedy.in,2019,Pune,Business-Hours,Mobile-App,Diesel+Petrol,COD+Net-15,3.8
+CargoMaster,2.9,0.7,8.1,Standard,8.3,7000,1100000,55,Pan-India,Heavy-Cargo,ISO9001,+91-9876543215,cargo@cargomaster.in,2010,Kolkata,24/7,GPS+Satellite,Diesel,Net-30,4.1
+BlueOcean Shipping,2.7,0.4,8.8,Eco,8.7,4500,1000000,35,Coastal+Tier1,Maritime+Road,ISO9001+ISO14001,+91-9876543216,blue@blueocean.in,2016,Mumbai,24/7,GPS+Maritime,CNG+Electric,Net-45,4.5
+RailLink Express,2.1,0.15,9.0,Rail,8.9,10000,1500000,20,Rail-Network,Rail+Road,ISO9001+Railway,+91-9876543217,rail@raillink.in,2008,Delhi,24/7,GPS+Rail-Track,Electric+Diesel,Net-60,4.6
+LocalMover,1.8,0.5,6.5,Local,6.0,2000,300000,15,Mumbai-Local,Intra-City,None,+91-9876543218,local@localmover.in,2021,Mumbai,Business-Hours,Mobile-App,CNG,COD,3.5
+PremiumTransport,4.2,0.9,9.3,Premium,9.5,3500,2000000,25,Tier1-Cities,Luxury-Goods,ISO9001+Security,+91-9876543219,premium@premium.in,2014,Gurgaon,24/7,GPS+Security,Diesel,Net-15,4.9
+BulkCargo,1.9,1.2,7.5,Bulk,7.0,15000,800000,40,Industrial-Belt,Heavy-Industry,ISO9001,+91-9876543220,bulk@bulkcargo.in,2011,Ahmedabad,Business-Hours,GPS,Diesel,Net-45,3.9
+TechLogistics,3.1,0.4,8.7,Standard,8.5,5500,1300000,50,Tech-Hubs,Electronics,IS
