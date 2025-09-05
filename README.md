@@ -385,7 +385,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [docs/](docs/)
 - **Issues**: [GitHub Issues](https://github.com/your-username/ai-supply-chain-optimizer/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-username/ai-supply-chain-optimizer/discussions)
-- **Email**: support@yourdomain.com
+- **Email**: devbruha@gmail.com
 
 ---
 
@@ -393,6 +393,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **🚀 Built with ❤️ for the Future of Supply Chain Optimization**
 
-[Demo](https://demo-link.com) • [Documentation](https://docs-link.com) • [Report Bug](https://github.com/your-username/ai-supply-chain-optimizer/issues) • [Request Feature](https://github.com/your-username/ai-supply-chain-optimizer/issues)
+[Demo](https://demo-link.com) • [Documentation](https://docs-link.com) • [Report Bug](https://github.com/your-username/ai-supply-chain-optimizer/issues) • [Request Feature](https://github.com/Bruhadev 45/ai-supply-chain-optimizer/issues)
 
 </div>
