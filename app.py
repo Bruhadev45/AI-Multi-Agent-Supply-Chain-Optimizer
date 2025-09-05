@@ -1,26 +1,19 @@
-"""
-AI Multi-Agent Supply Chain Optimizer - Streamlit Application
-"""
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import folium
 from streamlit_folium import st_folium
 import polyline
 import time
 import json
+import requests
 from datetime import datetime, timedelta
-import logging
-
-# Fix Python path for imports
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from orchestrator import Orchestrator
-
+import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,16 +26,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (keeping only essential styling, removing complex CSS from strategic summary)
+# Custom CSS for better styling
 st.markdown("""
 <style>
-    .main-header {
         background: linear-gradient(90deg, #FF6B6B 0%, #4ECDC4 100%);
         border-radius: 10px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
-        padding: 1rem;
     }
     .agent-card {
         background: #f8f9fa;
@@ -59,6 +50,17 @@ st.markdown("""
         text-align: center;
         margin: 0.5rem;
     }
+    .scenario-card {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        margin: 0.5rem 0;
+    }
+    .scenario-card:hover {
+        border-color: #4ECDC4;
+        background: #e8f5e8;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,857 +72,1077 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-def initialize_session_state():
-    """Initialize session state variables"""
-    if "orchestrator" not in st.session_state:
-        st.session_state.orchestrator = None
-    if "last_results" not in st.session_state:
-        st.session_state.last_results = None
-    if "execution_time" not in st.session_state:
-        st.session_state.execution_time = None
-
-def get_orchestrator():
-    """Get or create orchestrator instance"""
-    if st.session_state.orchestrator is None:
-        try:
-            with st.spinner("Initializing AI agents..."):
-                st.session_state.orchestrator = Orchestrator()
-            st.success("✅ All agents initialized successfully")
-            return st.session_state.orchestrator
-        except Exception as e:
-            st.error(f"❌ Failed to initialize orchestrator: {e}")
-            st.stop()
-    return st.session_state.orchestrator
+# City coordinates for dynamic map markers
+CITY_COORDINATES = {
+    'mumbai': [19.0760, 72.8777],
+    'delhi': [28.7041, 77.1025],
+    'bangalore': [12.9716, 77.5946],
+    'chennai': [13.0827, 80.2707],
+    'kolkata': [22.5726, 88.3639],
+    'hyderabad': [17.3850, 78.4867],
+    'pune': [18.5204, 73.8567],
+    'ahmedabad': [23.0225, 72.5714],
+    'jaipur': [26.9124, 75.7873],
+    'lucknow': [26.8467, 80.9462],
+    'kanpur': [26.4499, 80.3319],
+    'nagpur': [21.1458, 79.0882],
+    'indore': [22.7196, 75.8577],
+    'bhopal': [23.2599, 77.4126],
+    'visakhapatnam': [17.6868, 83.2185],
+    'patna': [25.5941, 85.1376],
+    'vadodara': [22.3072, 73.1812],
+    'ghaziabad': [28.6692, 77.4538],
+    'ludhiana': [30.9010, 75.8573],
+    'coimbatore': [11.0168, 76.9558]
+}
 
 def get_city_coordinates(city_name):
     """Get coordinates for a city"""
-    city_coordinates = {
-        'mumbai': [19.0760, 72.8777],
-        'delhi': [28.7041, 77.1025],
-        'bangalore': [12.9716, 77.5946],
-        'chennai': [13.0827, 80.2707],
-        'kolkata': [22.5726, 88.3639],
-        'hyderabad': [17.3850, 78.4867],
-        'pune': [18.5204, 73.8567],
-        'ahmedabad': [23.0225, 72.5714],
-        'jaipur': [26.9124, 75.7873],
-        'lucknow': [26.8467, 80.9462],
-        'kanpur': [26.4499, 80.3319],
-        'nagpur': [21.1458, 79.0882],
-        'indore': [22.7196, 75.8577],
-        'bhopal': [23.2599, 77.4126]
-    }
     city_key = city_name.lower().strip()
-    return city_coordinates.get(city_key, [23.5, 77.5])  # Default to center of India
+    return CITY_COORDINATES.get(city_key, [23.5, 77.5])  # Default to center of India
 
-def create_route_map(origin: str, destination: str, route_info: dict):
-    """Create interactive route map"""
+def create_sample_data():
+    """Create sample data if files don't exist"""
     try:
-        # Get coordinates
-        origin_coords = get_city_coordinates(origin)
-        dest_coords = get_city_coordinates(destination)
+        # Sample orders data with seasonal patterns
+        dates = pd.date_range(start='2024-01-01', end='2024-12-31', freq='D')
+        base_orders = 100
+        seasonal_pattern = [base_orders + 10 * np.sin(2 * np.pi * i / 365) for i in range(len(dates))]
+        random_variation = np.random.normal(0, 8, len(dates))
+        orders_data = {
+            'date': dates,
+            'orders': [max(50, int(s + r)) for s, r in zip(seasonal_pattern, random_variation)]
+        }
+        orders_df = pd.DataFrame(orders_data)
         
-        # Calculate center point
-        center_lat = (origin_coords[0] + dest_coords[0]) / 2
-        center_lon = (origin_coords[1] + dest_coords[1]) / 2
+        # Sample vendors data
+        vendors_data = {
+            'vendor': ['LogiTech Express', 'GreenShip Co', 'FastTrack Logistics', 'EcoFreight', 'SpeedyDelivery'],
+            'cost_per_km': [2.5, 3.2, 2.8, 3.5, 2.3],
+            'emission_per_km': [0.8, 0.3, 0.6, 0.2, 0.9],
+            'reliability_score': [8.5, 9.2, 7.8, 9.5, 7.2],
+            'delivery_speed': ['Standard', 'Eco', 'Fast', 'Eco+', 'Express']
+        }
+        vendors_df = pd.DataFrame(vendors_data)
         
-        # Create map
-        m = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=6,
-            tiles='OpenStreetMap'
-        )
-        
-        # Add route line
-        if route_info.get("polyline"):
-            try:
-                points = polyline.decode(route_info["polyline"])
-                folium.PolyLine(
-                    points, 
-                    color="#FF6B6B", 
-                    weight=4, 
-                    opacity=0.8,
-                    tooltip="Optimized Route"
-                ).add_to(m)
-            except:
-                # Fallback: straight line
-                folium.PolyLine(
-                    [origin_coords, dest_coords],
-                    color="#FF6B6B",
-                    weight=4,
-                    opacity=0.6,
-                    tooltip="Direct Route"
-                ).add_to(m)
-        else:
-            # Draw direct line
-            folium.PolyLine(
-                [origin_coords, dest_coords],
-                color="#FF6B6B",
-                weight=4,
-                opacity=0.6,
-                tooltip="Estimated Route"
-            ).add_to(m)
-        
-        # Add markers
-        folium.Marker(
-            origin_coords,
-            popup=f"<b>Origin: {origin}</b><br>🚀 Starting Point",
-            tooltip=f"🚀 {origin}",
-            icon=folium.Icon(color='green', icon='play', prefix='fa')
-        ).add_to(m)
-        
-        folium.Marker(
-            dest_coords,
-            popup=f"<b>Destination: {destination}</b><br>🎯 Delivery Point<br>⏱️ ETA: {route_info.get('duration', 'Unknown')}",
-            tooltip=f"🎯 {destination}",
-            icon=folium.Icon(color='red', icon='flag', prefix='fa')
-        ).add_to(m)
-        
-        return m
-        
+        return orders_df, vendors_df
     except Exception as e:
-        logger.error(f"Map creation failed: {e}")
-        # Return simple map
-        m = folium.Map(location=[20.5937, 78.9629], zoom_start=5)
-        return m
+        logger.error(f"Error creating sample data: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
-def get_scenario_config(scenario):
-    """Get scenario configuration"""
-    scenario_configs = {
+# Sidebar configuration
+with st.sidebar:
+    st.header("⚙️ Configuration Panel")
+    
+    # Route settings
+    st.subheader("📍 Route Settings")
+    
+    # Popular Indian cities for dropdown
+    indian_cities = [
+        "Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata", "Hyderabad", 
+        "Pune", "Ahmedabad", "Jaipur", "Lucknow", "Kanpur", "Nagpur",
+        "Indore", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad",
+        "Ludhiana", "Coimbatore"
+    ]
+    
+    origin = st.selectbox("Origin City", indian_cities, index=0)
+    destination = st.selectbox("Destination City", indian_cities, index=1)
+    
+    if origin == destination:
+        st.warning("⚠️ Origin and destination cannot be the same!")
+    
+    st.markdown("---")
+    
+    # Enhanced Scenario Simulation
+    st.subheader("🧪 Operational Scenarios")
+    
+    scenario_descriptions = {
         "🟢 Normal Operations": {
-            "demand_multiplier": 1.0,
-            "cost_multiplier": 1.0,
-            "risk_level": "Low"
+            "desc": "Standard supply chain operations with regular demand patterns",
+            "impact": "Baseline performance metrics",
+            "demand_mult": 1.0,
+            "cost_mult": 1.0,
+            "risk": "Low"
         },
         "📈 Peak Season Demand (+40%)": {
-            "demand_multiplier": 1.4,
-            "cost_multiplier": 1.1,
-            "risk_level": "Medium"
+            "desc": "Holiday season or festival period with increased orders",
+            "impact": "Higher inventory needs, potential capacity constraints",
+            "demand_mult": 1.4,
+            "cost_mult": 1.1,
+            "risk": "Medium"
         },
         "💰 Fuel Price Surge (+25%)": {
-            "demand_multiplier": 1.0,
-            "cost_multiplier": 1.25,
-            "risk_level": "Medium"
+            "desc": "Rising fuel costs affecting transportation expenses",
+            "impact": "Increased logistics costs, route optimization crucial",
+            "demand_mult": 1.0,
+            "cost_mult": 1.25,
+            "risk": "Medium"
         },
         "🌪️ Monsoon Disruption": {
-            "demand_multiplier": 0.9,
-            "cost_multiplier": 1.15,
-            "risk_level": "High"
+            "desc": "Weather-related delays and route complications",
+            "impact": "Extended delivery times, higher risk factors",
+            "demand_mult": 0.9,
+            "cost_mult": 1.15,
+            "risk": "High"
         },
         "⚡ Emergency Supply": {
-            "demand_multiplier": 1.2,
-            "cost_multiplier": 1.3,
-            "risk_level": "Medium"
+            "desc": "Urgent delivery requirements with time constraints",
+            "impact": "Premium costs, expedited processing needed",
+            "demand_mult": 1.2,
+            "cost_mult": 1.3,
+            "risk": "Medium"
         },
         "🏭 Industrial Strike": {
-            "demand_multiplier": 1.0,
-            "cost_multiplier": 1.2,
-            "risk_level": "High"
+            "desc": "Labor disruptions affecting vendor availability",
+            "impact": "Limited vendor options, potential delays",
+            "demand_mult": 1.0,
+            "cost_mult": 1.2,
+            "risk": "High"
         }
     }
-    return scenario_configs.get(scenario, scenario_configs["🟢 Normal Operations"])
+    
+    scenario = st.radio("Select Scenario:", list(scenario_descriptions.keys()))
+    
+    # Show scenario details
+    scenario_info = scenario_descriptions[scenario]
+    with st.expander(f"ℹ️ {scenario} Details"):
+        st.markdown(f"""
+        **Description:** {scenario_info['desc']}
+        
+        **Business Impact:** {scenario_info['impact']}
+        
+        **Adjustments:**
+        - Demand: {scenario_info['demand_mult']:.1%} of baseline
+        - Cost: {scenario_info['cost_mult']:.1%} of baseline  
+        - Risk Level: {scenario_info['risk']}
+        """)
+    
+    st.markdown("---")
+    
+    # Action buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        run_button = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
+    with col2:
+        clear_button = st.button("🗑️ Clear All", use_container_width=True)
+    
+    # Clear all functionality
+    if clear_button:
+        # Clear session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+    
+    # System status
+    st.subheader("🔍 System Status")
+    status_placeholder = st.empty()
 
-def main():
-    """Main application function"""
-    
-    # Initialize session state
-    initialize_session_state()
-    
-    # Get orchestrator
+# Initialize orchestrator
+@st.cache_resource
+def get_orchestrator():
+    return Orchestrator()
+
+try:
     orchestrator = get_orchestrator()
+    status_placeholder.success("✅ All agents operational")
+except Exception as e:
+    status_placeholder.error(f"❌ System error: {str(e)}")
+    st.stop()
+
+# Main execution logic
+if run_button:
+    if origin == destination:
+        st.error("❌ Please select different origin and destination cities!")
+        st.stop()
     
-    # Sidebar configuration
-    with st.sidebar:
-        st.header("⚙️ Configuration Panel")
+    try:
+        # Progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
-       
+        st.markdown("## 📊 AI Agent Execution Pipeline")
         
-        # Route settings
-        st.subheader("📍 Route Settings")
+        # Create containers for real-time updates
+        agent_containers = {
+            'forecast': st.empty(),
+            'route': st.empty(),
+            'cost': st.empty(),
+            'risk': st.empty(),
+            'coordinator': st.empty()
+        }
         
-        indian_cities = [
-            "Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata", "Hyderabad",
-            "Pune", "Ahmedabad", "Jaipur", "Lucknow", "Kanpur", "Nagpur",
-            "Indore", "Bhopal"
-        ]
+        results = {}
+        total_steps = 5
+        scenario_info = scenario_descriptions[scenario]
         
-        origin = st.selectbox("Origin City", indian_cities, index=0)
-        destination = st.selectbox("Destination City", indian_cities, index=1)
+        # Step 1: Demand Forecast Agent
+        progress_bar.progress(1/total_steps)
+        status_text.text("🔮 Demand Forecast Agent analyzing patterns...")
         
-        if origin == destination:
-            st.warning("⚠️ Origin and destination cannot be the same!")
-        
-        st.markdown("---")
-        
-        # Scenario Selection - Radio buttons instead of dropdown
-        st.subheader("🧪 Operational Scenarios")
-        
-        scenario_options = [
-            "🟢 Normal Operations",
-            "📈 Peak Season Demand (+40%)",
-            "💰 Fuel Price Surge (+25%)",
-            "🌪️ Monsoon Disruption",
-            "⚡ Emergency Supply",
-            "🏭 Industrial Strike"
-        ]
-        
-        scenario = st.radio(
-            "Select Scenario:",
-            scenario_options,
-            index=0,  # Default to Normal Operations
-            key="scenario_selection"
-        )
-        
-        # Show scenario details
-        scenario_config = get_scenario_config(scenario)
-        st.markdown("**Scenario Impact:**")
-        st.markdown(f"- **Demand:** {scenario_config['demand_multiplier']:.1%} of baseline")
-        st.markdown(f"- **Cost:** {scenario_config['cost_multiplier']:.1%} of baseline")
-        st.markdown(f"- **Risk Level:** {scenario_config['risk_level']}")
-        
-        st.markdown("---")
-        
-        # Action buttons
-        col1, col2 = st.columns(2)
-        with col1:
-            run_button = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
-        with col2:
-            clear_button = st.button("🗑️ Clear Results", use_container_width=True)
-        
-        if clear_button:
-            st.session_state.last_results = None
-            st.session_state.execution_time = None
-            st.success("Results cleared!")
-            time.sleep(1)
-            st.rerun()
-    
-    # Main execution logic
-    if run_button:
-        if origin == destination:
-            st.error("❌ Please select different origin and destination cities!")
-            st.stop()
-        
-        # Run comprehensive analysis
-        try:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+        with agent_containers['forecast'].container():
+            st.markdown('<div class="agent-card">', unsafe_allow_html=True)
+            st.subheader("🔮 Demand Forecast Agent")
+            forecast_progress = st.progress(0)
             
-            st.markdown("## 📊 AI Agent Execution Pipeline")
+            # Simulate processing time
+            for i in range(3):
+                forecast_progress.progress((i+1)/3)
+                time.sleep(0.3)
             
-            with st.spinner("Executing multi-agent analysis..."):
-                status_text.text("🤖 Initializing AI agents...")
-                progress_bar.progress(0.1)
+            try:
+                # Try to load real data, fall back to sample data
+                try:
+                    orders = pd.read_csv("data/orders.csv")
+                except:
+                    orders = create_sample_data()[0]
+                    
+                forecast = orchestrator.demand_agent.forecast(orders)
                 
-                # Run analysis
-                results = orchestrator.run_comprehensive_analysis(
-                    orders_csv=None,  # Will use sample data
-                    origin=origin,
-                    destination=destination,
-                    scenario=scenario
+                # Apply scenario multiplier
+                forecast_adjusted = forecast * scenario_info['demand_mult']
+                
+                results["forecast"] = forecast_adjusted
+                results["forecast_original"] = forecast
+                results["orders"] = orders
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("📈 Base Forecast", f"{forecast:,.0f}")
+                col2.metric("🎯 Scenario Adjusted", f"{forecast_adjusted:,.0f}")
+                col3.metric("📊 Historical Avg", f"{orders['orders'].mean():.0f}")
+                
+                st.success(f"✅ Forecast Complete: {forecast_adjusted:,.0f} orders predicted")
+                
+            except Exception as e:
+                st.error(f"❌ Forecast failed: {str(e)}")
+                results["forecast"] = 120  # fallback
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Step 2: Route Optimization Agent
+        progress_bar.progress(2/total_steps)
+        status_text.text("🗺️ Route Optimizer Agent finding optimal path...")
+        
+        with agent_containers['route'].container():
+            st.markdown('<div class="agent-card">', unsafe_allow_html=True)
+            st.subheader("🗺️ Route Optimization Agent")
+            route_progress = st.progress(0)
+            
+            for i in range(3):
+                route_progress.progress((i+1)/3)
+                time.sleep(0.3)
+            
+            try:
+                route_info = orchestrator.route_agent.get_best_route(origin, destination)
+                results["route_info"] = route_info
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("🛣️ Distance", f"{route_info['distance_km']:.1f} km")
+                col2.metric("⏱️ Duration", route_info['duration'])
+                col3.metric("🔌 Data Source", route_info['source'])
+                
+                st.success(f"✅ Route Optimized: {origin} → {destination}")
+                
+            except Exception as e:
+                st.error(f"❌ Route optimization failed: {str(e)}")
+                # Fallback route info
+                results["route_info"] = {
+                    "path": [origin, destination], 
+                    "distance_km": 1400, 
+                    "duration": "18 hours",
+                    "source": "Fallback estimation",
+                    "polyline": None
+                }
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Step 3: Cost Analyzer Agent
+        progress_bar.progress(3/total_steps)
+        status_text.text("💰 Cost Analyzer Agent evaluating vendors...")
+        
+        with agent_containers['cost'].container():
+            st.markdown('<div class="agent-card">', unsafe_allow_html=True)
+            st.subheader("💰 Cost Analyzer Agent")
+            cost_progress = st.progress(0)
+            
+            for i in range(3):
+                cost_progress.progress((i+1)/3)
+                time.sleep(0.3)
+            
+            try:
+                # Get vendor analysis
+                vendor, price, all_vendors = orchestrator.cost_agent.compare_vendors(
+                    results["route_info"]["distance_km"]
                 )
                 
-                progress_bar.progress(1.0)
-                status_text.text("✅ Analysis completed successfully!")
+                # Apply scenario cost multiplier
+                price_adjusted = price * scenario_info['cost_mult']
+                if not all_vendors.empty:
+                    all_vendors['total_cost'] = all_vendors['total_cost'] * scenario_info['cost_mult']
                 
-                # Store results
-                st.session_state.last_results = results
-                st.session_state.execution_time = datetime.now()
-                st.session_state.scenario_used = scenario
+                results["best_vendor"] = vendor
+                results["best_price"] = price_adjusted
+                results["original_price"] = price
+                results["all_vendors"] = all_vendors
                 
-                st.success("🎉 Multi-agent analysis completed successfully!")
-                time.sleep(1)
+                col1, col2, col3 = st.columns(3)
+                col1.metric("🏆 Best Vendor", vendor)
+                col2.metric("💳 Scenario Cost", f"₹{price_adjusted:,.2f}")
+                col3.metric("📊 Base Cost", f"₹{price:,.2f}")
                 
-        except Exception as e:
-            st.error(f"❌ Analysis failed: {str(e)}")
-            logger.error(f"Analysis error: {e}")
+                st.success(f"✅ Cost Analysis: {vendor} selected @ ₹{price_adjusted:,.2f}")
+                
+            except Exception as e:
+                st.error(f"❌ Cost analysis failed: {str(e)}")
+                results["best_vendor"] = "Fallback Vendor"
+                results["best_price"] = 5000
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Step 4: Risk Monitor Agent
+        progress_bar.progress(4/total_steps)
+        status_text.text("⚠️ Risk Monitor Agent assessing conditions...")
+        
+        with agent_containers['risk'].container():
+            st.markdown('<div class="agent-card">', unsafe_allow_html=True)
+            st.subheader("⚠️ Risk Monitor Agent")
+            risk_progress = st.progress(0)
+            
+            for i in range(3):
+                risk_progress.progress((i+1)/3)
+                time.sleep(0.3)
+            
+            try:
+                risk = orchestrator.risk_agent.check_weather(destination)
+                
+                # Override risk for specific scenarios
+                if "Monsoon" in scenario or "Weather" in scenario:
+                    risk = {
+                        "condition": "Heavy Rain",
+                        "temp": "22°C",
+                        "humidity": "85%",
+                        "wind": "25 km/h",
+                        "risk_level": "🔴 High",
+                        "scenario_override": True
+                    }
+                elif "Strike" in scenario:
+                    if isinstance(risk, dict):
+                        risk["risk_level"] = "🔴 High"
+                        risk["additional_risk"] = "Labor disruption"
+                
+                results["risk"] = risk
+                
+                if isinstance(risk, dict) and "condition" in risk:
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("🌤️ Weather", risk.get("condition", "Unknown"))
+                    col2.metric("🌡️ Temp", risk.get("temp", "N/A"))
+                    col3.metric("💧 Humidity", risk.get("humidity", "N/A"))
+                    col4.metric("🌬️ Wind", risk.get("wind", "N/A"))
+                    
+                    # Risk level display
+                    risk_level = risk.get("risk_level", "🟡 Medium")
+                    if "🔴" in risk_level:
+                        st.error(f"⚠️ {risk_level}")
+                    elif "🟡" in risk_level:
+                        st.warning(f"⚠️ {risk_level}")
+                    else:
+                        st.success(f"✅ {risk_level}")
+                        
+                    # Additional scenario risks
+                    if risk.get("scenario_override"):
+                        st.info("🎭 Risk adjusted for selected scenario")
+                    if risk.get("additional_risk"):
+                        st.warning(f"➕ Additional Risk: {risk['additional_risk']}")
+                else:
+                    st.warning(f"⚠️ Weather data: {str(risk)}")
+                
+                st.success("✅ Risk assessment completed")
+                
+            except Exception as e:
+                st.error(f"❌ Risk assessment failed: {str(e)}")
+                results["risk"] = {"condition": "Unknown", "risk_level": "🟡 Medium"}
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Step 5: Coordinator Agent (Fixed)
+        progress_bar.progress(2/total_steps)
+        status_text.text("🎯 Coordinator Agent synthesizing insights...")
+        
+        with agent_containers['coordinator'].container():
+            st.markdown('<div class="agent-card">', unsafe_allow_html=True)
+            st.subheader("🎯 Strategic Coordinator Agent")
+            coord_progress = st.progress(0)
+            
+            for i in range(4):
+                coord_progress.progress((i+1)/4)
+                time.sleep(0.4)
+            
+            try:
+                # Fixed: Call the enhanced orchestrator method properly
+                comprehensive_results = orchestrator.run_comprehensive_analysis(
+                    "data/orders.csv" if pd.io.common.file_exists("data/orders.csv") else None,
+                    origin, 
+                    destination, 
+                    scenario
+                )
+                
+                # Extract the strategic recommendations
+                final = comprehensive_results.get("crew_reasoning", "Strategic analysis completed")
+                agent_insights = comprehensive_results.get("agent_insights", {})
+                
+                results["crew_reasoning"] = final
+                results["agent_insights"] = agent_insights
+                results["system_metadata"] = comprehensive_results.get("execution_metadata", {})
+                
+                # Display clear strategic summary
+                st.markdown("### 🎯 Strategic Recommendations")
+                
+                # Create a clear, structured summary
+                summary_parts = []
+                summary_parts.append(f"**🎬 Scenario:** {scenario}")
+                summary_parts.append(f"**🛣️ Route:** {origin} → {destination} ({results['route_info']['distance_km']:.0f} km)")
+                summary_parts.append(f"**📈 Expected Orders:** {results['forecast']:,.0f}")
+                summary_parts.append(f"**🏆 Recommended Vendor:** {results['best_vendor']}")
+                summary_parts.append(f"**💰 Total Cost:** ₹{results['best_price']:,.2f}")
+                
+                risk_info = results['risk']
+                if isinstance(risk_info, dict):
+                    risk_level = risk_info.get('risk_level', '🟡 Medium')
+                    summary_parts.append(f"**⚠️ Risk Level:** {risk_level}")
+                
+                # Executive summary
+                exec_summary = f"""
+                ## 📋 Executive Summary
+                
+                {chr(10).join(summary_parts)}
+                
+                ## 🎯 Key Insights
+                {final}
+                
+                ## ✅ Recommended Actions
+                1. **Immediate:** Confirm booking with {results['best_vendor']} for ₹{results['best_price']:,.2f}
+                2. **Monitor:** Track weather conditions and traffic updates for {destination}
+                3. **Prepare:** Ensure inventory levels meet forecasted demand of {results['forecast']:,.0f} orders
+                4. **Backup:** Maintain alternative vendor contacts for risk mitigation
+                5. **Review:** Schedule delivery performance review post-completion
+                """
+                
+                st.markdown(exec_summary)
+                st.success("✅ Strategic coordination completed successfully")
+                
+            except Exception as e:
+                st.error(f"❌ Coordination failed: {str(e)}")
+                logger.error(f"Coordination error details: {e}")
+                
+                # Provide fallback strategic summary
+                fallback_summary = f"""
+                ## 📋 Strategic Summary (Fallback)
+                
+                **Route Analysis:** {origin} → {destination} ({results.get('route_info', {}).get('distance_km', 'N/A')} km)
+                
+                **Cost Optimization:** {results.get('best_vendor', 'Unknown')} selected at ₹{results.get('best_price', 0):,.2f}
+                
+                **Demand Planning:** Prepare for {results.get('forecast', 0):,.0f} orders
+                
+                **Risk Management:** Monitor conditions and maintain contingency plans
+                
+                **Recommendation:** Proceed with selected vendor while monitoring risk factors
+                """
+                
+                results["crew_reasoning"] = fallback_summary
+                st.markdown(fallback_summary)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        progress_bar.progress(1.0)
+        status_text.text("✅ All agents completed successfully!")
+        
+        # Store results for dashboard
+        st.session_state["last_results"] = results
+        st.session_state["execution_time"] = datetime.now()
+        st.session_state["scenario_used"] = scenario
+        
+        time.sleep(1)
+        
+    except Exception as e:
+        st.error(f"⚠️ Pipeline execution failed: {str(e)}")
+        logger.error(f"Pipeline error: {e}")
+
+# Dashboard section - Enhanced
+if "last_results" in st.session_state:
+    results = st.session_state["last_results"]
+    execution_time = st.session_state.get("execution_time", datetime.now())
+    scenario_used = st.session_state.get("scenario_used", "Unknown")
     
-    # Dashboard section
-    if st.session_state.last_results:
-        results = st.session_state.last_results
-        execution_time = st.session_state.execution_time
-        scenario_used = st.session_state.get("scenario_used", "Unknown")
-        
-        st.markdown("---")
-        st.markdown("## 📊 Comprehensive Analytics Dashboard")
-        
-        # Key Metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            forecast_val = results.get('forecast', 0)
-            st.metric("📈 Demand Forecast", f"{forecast_val:,.0f}")
-            original_forecast = results.get('forecast_original', forecast_val)
-            if original_forecast != forecast_val:
-                delta = forecast_val - original_forecast
-                st.caption(f"Δ {delta:+.0f} scenario impact")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            route_info = results.get('route_info', {})
-            distance = route_info.get('distance_km', 0)
-            st.metric("🛣️ Route Distance", f"{distance:.0f} km")
-            duration = route_info.get('duration', 'Unknown')
-            st.caption(f"Duration: {duration}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            price = results.get('best_price', 0)
-            st.metric("💰 Optimized Cost", f"₹{price:,.2f}")
-            vendor = results.get('best_vendor', 'Unknown')
-            st.caption(f"Vendor: {vendor}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            risk = results.get('risk', {})
-            risk_level = risk.get('risk_level', '🟡 Medium') if isinstance(risk, dict) else '🟡 Medium'
+    st.markdown("---")
+    st.markdown("## 📊 Comprehensive Analytics Dashboard")
+    
+    # Enhanced metrics with scenario context
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        forecast_val = results.get('forecast', 0)
+        st.metric("📈 Demand Forecast", f"{forecast_val:,.0f}" if forecast_val else "N/A")
+        if results.get('forecast_original'):
+            delta = forecast_val - results['forecast_original']
+            st.caption(f"Δ {delta:+.0f} from baseline")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        route_info = results.get('route_info', {})
+        distance = route_info.get('distance_km', 0)
+        st.metric("🛣️ Route Distance", f"{distance:.0f} km" if distance else "N/A")
+        if distance:
+            st.caption(f"≈ {distance/50:.1f} hours drive time")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        price = results.get('best_price', 0)
+        st.metric("💰 Optimized Cost", f"₹{price:,.2f}" if price else "N/A")
+        if results.get('original_price'):
+            delta = price - results['original_price']
+            st.caption(f"Δ ₹{delta:+.0f} scenario impact")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        risk = results.get('risk', {})
+        if isinstance(risk, dict):
+            risk_level = risk.get('risk_level', '🟡 Medium')
             clean_risk = risk_level.replace('🔴', 'High').replace('🟡', 'Medium').replace('🟢', 'Low')
             st.metric("⚠️ Risk Level", clean_risk)
-            condition = risk.get('condition', 'Unknown') if isinstance(risk, dict) else 'Unknown'
-            st.caption(f"Weather: {condition}")
-            st.markdown('</div>', unsafe_allow_html=True)
+            weather = risk.get('condition', 'Unknown')
+            st.caption(f"Weather: {weather}")
+        else:
+            st.metric("⚠️ Risk Level", "Unknown")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Main dashboard with enhanced tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Demand Analytics", "🗺️ Route Visualization", "💰 Cost Analysis", "📋 Strategic Summary"])
+    
+    with tab1:
+        col1, col2 = st.columns(2)
         
-        # Detailed Dashboard Tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["📈 Demand Analytics", "🗺️ Route Visualization", "💰 Cost Analysis", "📋 Strategic Summary"])
+        with col1:
+            st.subheader("📊 Demand Forecast Trends")
+            try:
+                orders = results.get("orders")
+                if orders is not None and not orders.empty:
+                    fig = px.line(orders, x="date", y="orders", 
+                                 title="Historical Order Patterns",
+                                 markers=True)
+                    
+                    # Add forecast line
+                    forecast_val = results.get('forecast', 0)
+                    if forecast_val:
+                        fig.add_hline(y=forecast_val, line_dash="dash", 
+                                    line_color="red",
+                                    annotation_text=f"Forecast: {forecast_val:,.0f}")
+                    
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("📊 Order data not available")
+            except Exception as e:
+                st.error(f"Chart error: {e}")
         
-        with tab1:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("📊 Demand Forecast Analysis")
-                
-                # Create sample trend data
-                dates = pd.date_range(start='2024-01-01', periods=30, freq='D')
-                base_demand = 100
-                trend_data = [base_demand + np.sin(i/5) * 10 + np.random.normal(0, 5) for i in range(30)]
-                
-                trend_df = pd.DataFrame({
-                    'date': dates,
-                    'orders': trend_data
-                })
-                
-                fig = px.line(trend_df, x='date', y='orders', title="Historical Order Patterns")
-                
-                # Add forecast line
-                forecast_val = results.get('forecast', 100)
-                fig.add_hline(y=forecast_val, line_dash="dash", line_color="red",
-                            annotation_text=f"Forecast: {forecast_val:,.0f}")
-                
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                st.subheader("📈 Scenario Impact Comparison")
-                
-                base_forecast = results.get('forecast_original', 100)
-                scenarios = {
+        with col2:
+            st.subheader("📈 Scenario Impact Analysis")
+            try:
+                base_forecast = results.get('forecast_original', results.get('forecast', 100))
+                scenarios_impact = {
                     "Normal": base_forecast,
-                    "Peak Season": base_forecast * 1.4,
+                    "Peak Season (+40%)": base_forecast * 1.4,
                     "Fuel Surge": base_forecast,
-                    "Monsoon": base_forecast * 0.9,
-                    "Emergency": base_forecast * 1.2,
+                    "Monsoon (-10%)": base_forecast * 0.9,
+                    "Emergency (+20%)": base_forecast * 1.2,
                     "Strike": base_forecast
                 }
                 
-                scenario_df = pd.DataFrame(list(scenarios.items()), columns=['Scenario', 'Demand'])
+                impact_df = pd.DataFrame(list(scenarios_impact.items()), 
+                                       columns=['Scenario', 'Demand'])
                 
-                fig = px.bar(scenario_df, x='Scenario', y='Demand', title="Demand by Scenario",
+                fig = px.bar(impact_df, x='Scenario', y='Demand',
+                           title="Demand Impact by Scenario",
                            color='Demand', color_continuous_scale='viridis')
                 
+                # Highlight current scenario
+                current_scenario_short = scenario_used.split()[1] if len(scenario_used.split()) > 1 else "Normal"
+                fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
                 
-                st.info(f"**Current Scenario:** {scenario_used}")
+                st.info(f"Current scenario: **{scenario_used}**")
+            except Exception as e:
+                st.error(f"Scenario analysis error: {e}")
+    
+    with tab2:
+        col1, col2 = st.columns([3, 1])
         
-        with tab2:
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                st.subheader("🗺️ Route Visualization")
-                route_map = create_route_map(origin, destination, route_info)
-                st_folium(route_map, width=700, height=500)
-            
-            with col2:
-                st.subheader("🛣️ Route Details")
+        with col1:
+            st.subheader("🗺️ Optimized Route Map")
+            try:
+                route_info = results.get('route_info', {})
                 
+                # Get actual coordinates for origin and destination
+                origin_coords = get_city_coordinates(route_info.get('path', ['Mumbai', 'Delhi'])[0])
+                dest_coords = get_city_coordinates(route_info.get('path', ['Mumbai', 'Delhi'])[1])
+                
+                # Calculate map center
+                center_lat = (origin_coords[0] + dest_coords[0]) / 2
+                center_lon = (origin_coords[1] + dest_coords[1]) / 2
+                
+                # Create map with satellite tiles
+                m = folium.Map(
+                    location=[center_lat, center_lon], 
+                    zoom_start=6,
+                    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    attr='Esri'
+                )
+                
+                # Add route polyline if available
+                if route_info.get("polyline"):
+                    try:
+                        points = polyline.decode(route_info["polyline"])
+                        folium.PolyLine(
+                            points, 
+                            color="#FF6B6B", 
+                            weight=4, 
+                            opacity=0.8,
+                            tooltip="Optimized Route"
+                        ).add_to(m)
+                    except:
+                        # Fallback: draw straight line
+                        folium.PolyLine(
+                            [origin_coords, dest_coords],
+                            color="#FF6B6B",
+                            weight=4,
+                            opacity=0.6,
+                            tooltip="Direct Route (Approximate)"
+                        ).add_to(m)
+                
+                # Add dynamic markers with proper coordinates
+                path = route_info.get("path", [origin, destination])
+                if len(path) >= 2:
+                    # Origin marker
+                    folium.Marker(
+                        origin_coords,
+                        popup=f"""
+                        <b>Origin: {path[0]}</b><br>
+                        📍 Starting Point<br>
+                        🚚 Departure Hub
+                        """,
+                        tooltip=f"🚀 {path[0]}",
+                        icon=folium.Icon(color='green', icon='play', prefix='fa')
+                    ).add_to(m)
+                    
+                    # Destination marker
+                    folium.Marker(
+                        dest_coords,
+                        popup=f"""
+                        <b>Destination: {path[1]}</b><br>
+                        🎯 Delivery Point<br>
+                        📦 Customer Location<br>
+                        ⏱️ ETA: {route_info.get('duration', 'Calculating...')}
+                        """,
+                        tooltip=f"🎯 {path[1]}",
+                        icon=folium.Icon(color='red', icon='flag', prefix='fa')
+                    ).add_to(m)
+                
+                # Add layer control for different map views
+                folium.TileLayer('OpenStreetMap').add_to(m)
+                folium.TileLayer(
+                    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+                    attr='Esri',
+                    name='Street Map'
+                ).add_to(m)
+                folium.LayerControl().add_to(m)
+                
+                st_folium(m, width=800, height=500)
+                
+            except Exception as e:
+                st.error(f"🗺️ Map rendering failed: {e}")
+                st.info("💡 Map requires valid city names and coordinates")
+        
+        with col2:
+            st.subheader("🛣️ Route Intelligence")
+            route_info = results.get('route_info', {})
+            
+            if route_info:
+                # Route details card
                 st.markdown(f"""
-                **From:** {origin}  
-                **To:** {destination}  
-                **Distance:** {distance:.0f} km  
-                **Duration:** {duration}  
-                **Source:** {route_info.get('source', 'Unknown')}
-                """)
+                <div style="background: #0; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <h4>📍 Route Details</h4>
+                <p><b>From:</b> {route_info.get('path', ['N/A', 'N/A'])[0]}</p>
+                <p><b>To:</b> {route_info.get('path', ['N/A', 'N/A'])[1]}</p>
+                <p><b>Distance:</b> {route_info.get('distance_km', 'N/A')} km</p>
+                <p><b>Duration:</b> {route_info.get('duration', 'N/A')}</p>
+                <p><b>Source:</b> {route_info.get('source', 'N/A')}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Route efficiency metrics
-                if distance > 0:
-                    fuel_estimate = distance / 15  # 15 km/liter
-                    co2_estimate = distance * 0.21  # kg CO2 per km
+                distance = route_info.get('distance_km', 0)
+                if distance and distance > 0:
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        fuel_estimate = distance / 15  # Assuming 15 km/liter
+                        st.metric("⛽ Fuel Est.", f"{fuel_estimate:.1f}L")
+                    with col_b:
+                        co2_estimate = distance * 0.21  # kg CO2 per km
+                        st.metric("🌱 CO₂ Est.", f"{co2_estimate:.1f}kg")
                     
-                    st.metric("⛽ Fuel Estimate", f"{fuel_estimate:.1f}L")
-                    st.metric("🌱 CO₂ Estimate", f"{co2_estimate:.1f}kg")
-                    
+                    # Efficiency score
                     efficiency_score = min(100, max(0, 100 - (distance / 20)))
                     st.metric("📊 Route Efficiency", f"{efficiency_score:.0f}%")
-        
-        with tab3:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("💰 Comprehensive Vendor Analysis")
-                vendors = results.get("all_vendors")
                 
-                if vendors is not None and not vendors.empty:
-                    # Create tabs for different vendor analyses
-                    vendor_tab1, vendor_tab2, vendor_tab3 = st.tabs(["📊 Overview", "🔍 Detailed Comparison", "🏆 Rankings"])
-                    
-                    with vendor_tab1:
-                        # Vendor count info
-                        st.info(f"📊 Analyzing **{len(vendors)} vendors** for your route")
-                        
-                        # Main vendor comparison table with key metrics
-                        key_columns = ['vendor', 'total_cost', 'cost_per_km', 'reliability_score', 
-                                     'delivery_speed', 'customer_rating', 'emission_per_km']
-                        available_key_cols = [col for col in key_columns if col in vendors.columns]
-                        display_vendors = vendors[available_key_cols].copy()
-                        
-                        # Format the display
-                        if 'total_cost' in display_vendors.columns:
-                            display_vendors['total_cost'] = display_vendors['total_cost'].apply(lambda x: f"₹{x:,.0f}")
-                        if 'cost_per_km' in display_vendors.columns:
-                            display_vendors['cost_per_km'] = display_vendors['cost_per_km'].apply(lambda x: f"₹{x:.2f}")
-                        if 'emission_per_km' in display_vendors.columns:
-                            display_vendors['emission_per_km'] = display_vendors['emission_per_km'].apply(lambda x: f"{x:.2f}kg")
-                        if 'customer_rating' in display_vendors.columns:
-                            display_vendors['customer_rating'] = display_vendors['customer_rating'].apply(lambda x: f"⭐{x:.1f}")
-                        
-                        # Rename columns for better display
-                        column_names = {
-                            'vendor': 'Vendor',
-                            'total_cost': 'Total Cost',
-                            'cost_per_km': 'Rate/KM',
-                            'reliability_score': 'Reliability',
-                            'delivery_speed': 'Speed Type',
-                            'customer_rating': 'Rating',
-                            'emission_per_km': 'CO₂/KM'
-                        }
-                        
-                        display_vendors = display_vendors.rename(columns=column_names)
-                        st.dataframe(display_vendors, use_container_width=True)
-                        
-                        # Quick insights
-                        col_a, col_b, col_c, col_d = st.columns(4)
-                        if 'total_cost' in vendors.columns:
-                            with col_a:
-                                cheapest = vendors.loc[vendors['total_cost'].idxmin(), 'vendor']
-                                st.metric("💰 Most Cost-Effective", cheapest)
-                        
-                        if 'customer_rating' in vendors.columns:
-                            with col_b:
-                                highest_rated = vendors.loc[vendors['customer_rating'].idxmax(), 'vendor']
-                                st.metric("🏆 Highest Rated", highest_rated)
-                        
-                        if 'emission_per_km' in vendors.columns:
-                            with col_c:
-                                greenest = vendors.loc[vendors['emission_per_km'].idxmin(), 'vendor']
-                                st.metric("🌱 Most Eco-Friendly", greenest)
-                        
-                        if 'max_capacity_kg' in vendors.columns:
-                            with col_d:
-                                largest_capacity = vendors.loc[vendors['max_capacity_kg'].idxmax(), 'vendor']
-                                st.metric("📦 Largest Capacity", largest_capacity)
-                    
-                    with vendor_tab2:
-                        # Detailed vendor information
-                        selected_vendor = st.selectbox(
-                            "Select vendor for detailed analysis:",
-                            vendors['vendor'].tolist() if 'vendor' in vendors.columns else []
-                        )
-                        
-                        if selected_vendor and 'vendor' in vendors.columns:
-                            vendor_details = vendors[vendors['vendor'] == selected_vendor].iloc[0]
-                            
-                            # Display detailed vendor info in organized sections
-                            col_left, col_right = st.columns(2)
-                            
-                            with col_left:
-                                st.markdown("#### 📋 Basic Information")
-                                basic_info = {}
-                                if 'headquarters_city' in vendor_details:
-                                    basic_info['Headquarters'] = vendor_details['headquarters_city']
-                                if 'established_year' in vendor_details:
-                                    basic_info['Established'] = vendor_details['established_year']
-                                if 'fleet_size' in vendor_details:
-                                    basic_info['Fleet Size'] = f"{vendor_details['fleet_size']} vehicles"
-                                if 'geographic_coverage' in vendor_details:
-                                    basic_info['Coverage'] = vendor_details['geographic_coverage']
-                                
-                                for key, value in basic_info.items():
-                                    st.markdown(f"**{key}:** {value}")
-                                
-                                st.markdown("#### 🚚 Service Details")
-                                service_info = {}
-                                if 'specialization' in vendor_details:
-                                    service_info['Specialization'] = vendor_details['specialization']
-                                if 'delivery_speed' in vendor_details:
-                                    service_info['Delivery Type'] = vendor_details['delivery_speed']
-                                if 'fuel_type' in vendor_details:
-                                    service_info['Fuel Type'] = vendor_details['fuel_type']
-                                if 'tracking_system' in vendor_details:
-                                    service_info['Tracking'] = vendor_details['tracking_system']
-                                
-                                for key, value in service_info.items():
-                                    st.markdown(f"**{key}:** {value}")
-                            
-                            with col_right:
-                                st.markdown("#### 📊 Performance Metrics")
-                                metrics = {}
-                                if 'reliability_score' in vendor_details:
-                                    metrics['Reliability'] = f"{vendor_details['reliability_score']}/10"
-                                if 'service_quality' in vendor_details:
-                                    metrics['Service Quality'] = f"{vendor_details['service_quality']}/10"
-                                if 'customer_rating' in vendor_details:
-                                    metrics['Customer Rating'] = f"⭐{vendor_details['customer_rating']}/5"
-                                if 'cost_per_km' in vendor_details:
-                                    metrics['Rate per KM'] = f"₹{vendor_details['cost_per_km']:.2f}"
-                                
-                                for key, value in metrics.items():
-                                    st.markdown(f"**{key}:** {value}")
-                                
-                                st.markdown("#### 🛡️ Support & Security")
-                                support_info = {}
-                                if 'emergency_support' in vendor_details:
-                                    support_info['Emergency Support'] = vendor_details['emergency_support']
-                                if 'insurance_coverage' in vendor_details:
-                                    support_info['Insurance'] = f"₹{vendor_details['insurance_coverage']:,}"
-                                if 'certification' in vendor_details:
-                                    support_info['Certifications'] = vendor_details['certification']
-                                if 'payment_terms' in vendor_details:
-                                    support_info['Payment Terms'] = vendor_details['payment_terms']
-                                
-                                for key, value in support_info.items():
-                                    st.markdown(f"**{key}:** {value}")
-                            
-                            # Contact information
-                            if any(col in vendor_details for col in ['contact_phone', 'contact_email']):
-                                st.markdown("#### 📞 Contact Information")
-                                contact_cols = st.columns(2)
-                                if 'contact_phone' in vendor_details:
-                                    with contact_cols[0]:
-                                        st.markdown(f"**Phone:** {vendor_details['contact_phone']}")
-                                if 'contact_email' in vendor_details:
-                                    with contact_cols[1]:
-                                        st.markdown(f"**Email:** {vendor_details['contact_email']}")
-                    
-                    with vendor_tab3:
-                        # Rankings and comparisons
-                        st.markdown("#### 🏆 Vendor Rankings")
-                        
-                        ranking_cols = st.columns(2)
-                        
-                        with ranking_cols[0]:
-                            # Cost ranking
-                            if 'total_cost' in vendors.columns:
-                                cost_ranking = vendors.nsmallest(5, 'total_cost')[['vendor', 'total_cost']].copy()
-                                cost_ranking['total_cost'] = cost_ranking['total_cost'].apply(lambda x: f"₹{x:,.0f}")
-                                cost_ranking.index = range(1, len(cost_ranking) + 1)
-                                st.markdown("**💰 Most Cost-Effective**")
-                                st.dataframe(cost_ranking.rename(columns={'vendor': 'Vendor', 'total_cost': 'Total Cost'}))
-                            
-                            # Environmental ranking
-                            if 'emission_per_km' in vendors.columns:
-                                eco_ranking = vendors.nsmallest(5, 'emission_per_km')[['vendor', 'emission_per_km']].copy()
-                                eco_ranking['emission_per_km'] = eco_ranking['emission_per_km'].apply(lambda x: f"{x:.2f} kg/km")
-                                eco_ranking.index = range(1, len(eco_ranking) + 1)
-                                st.markdown("**🌱 Most Eco-Friendly**")
-                                st.dataframe(eco_ranking.rename(columns={'vendor': 'Vendor', 'emission_per_km': 'CO₂ Emission'}))
-                        
-                        with ranking_cols[1]:
-                            # Reliability ranking
-                            if 'reliability_score' in vendors.columns:
-                                reliability_ranking = vendors.nlargest(5, 'reliability_score')[['vendor', 'reliability_score']].copy()
-                                reliability_ranking['reliability_score'] = reliability_ranking['reliability_score'].apply(lambda x: f"{x}/10")
-                                reliability_ranking.index = range(1, len(reliability_ranking) + 1)
-                                st.markdown("**🛡️ Most Reliable**")
-                                st.dataframe(reliability_ranking.rename(columns={'vendor': 'Vendor', 'reliability_score': 'Reliability'}))
-                            
-                            # Customer rating ranking
-                            if 'customer_rating' in vendors.columns:
-                                rating_ranking = vendors.nlargest(5, 'customer_rating')[['vendor', 'customer_rating']].copy()
-                                rating_ranking['customer_rating'] = rating_ranking['customer_rating'].apply(lambda x: f"⭐{x:.1f}/5")
-                                rating_ranking.index = range(1, len(rating_ranking) + 1)
-                                st.markdown("**⭐ Highest Rated**")
-                                st.dataframe(rating_ranking.rename(columns={'vendor': 'Vendor', 'customer_rating': 'Rating'}))
-                
+                # Traffic and timing insights
+                st.markdown("### ⏰ Timing Insights")
+                current_hour = datetime.now().hour
+                if 6 <= current_hour <= 10 or 17 <= current_hour <= 21:
+                    st.warning("🚦 Peak traffic hours - expect delays")
                 else:
-                    st.warning("📊 Vendor data not available for this analysis")
-            
-            with col2:
-                st.subheader("📊 Cost Analysis & Breakdown")
-                
-                total_cost = results.get('best_price', 0)
-                if total_cost > 0:
-                    # Cost components
-                    components = {
-                        'Transportation': total_cost * 0.60,
-                        'Fuel': total_cost * 0.25,
-                        'Insurance': total_cost * 0.08,
-                        'Tolls': total_cost * 0.05,
-                        'Service Fee': total_cost * 0.02
+                    st.success("✅ Optimal travel time")
+    
+    with tab3:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("💰 Vendor Cost Analysis")
+            try:
+                vendors = results.get("all_vendors")
+                if vendors is not None and not vendors.empty:
+                    # Enhanced styling for vendor table
+                    def highlight_best(s):
+                        is_min = s == s.min()
+                        return ['background-color: lightgreen' if v else '' for v in is_min]
+                    
+                    styled_vendors = vendors.style.apply(highlight_best, subset=['total_cost'])
+                    
+                    if 'co2_emission' in vendors.columns:
+                        styled_vendors = styled_vendors.apply(highlight_best, subset=['co2_emission'])
+                    
+                    # Format columns
+                    format_dict = {
+                        "total_cost": "₹{:,.2f}",
+                        "cost_per_km": "₹{:.2f}/km",
+                        "emission_per_km": "{:.2f} kg/km"
                     }
                     
+                    if 'co2_emission' in vendors.columns:
+                        format_dict["co2_emission"] = "{:.1f} kg"
+                    
+                    styled_vendors = styled_vendors.format(format_dict)
+                    
+                    st.dataframe(styled_vendors, use_container_width=True)
+                    
+                    # Cost vs Sustainability analysis
+                    if 'co2_emission' in vendors.columns and len(vendors) > 1:
+                        fig = px.scatter(
+                            vendors, 
+                            x="total_cost", 
+                            y="co2_emission",
+                            size="reliability_score" if "reliability_score" in vendors.columns else None,
+                            color="vendor",
+                            title="Cost vs Environmental Impact Trade-off",
+                            labels={
+                                "total_cost": "Total Cost (₹)",
+                                "co2_emission": "CO₂ Emissions (kg)"
+                            },
+                            hover_data=["delivery_speed"] if "delivery_speed" in vendors.columns else None
+                        )
+                        fig.update_layout(height=400)
+                        st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("📊 Vendor data not available")
+            except Exception as e:
+                st.error(f"Vendor analysis error: {e}")
+        
+        with col2:
+            st.subheader("📊 Cost Breakdown & Insights")
+            
+            try:
+                best_price = results.get('best_price', 0)
+                original_price = results.get('original_price', best_price)
+                
+                if best_price and best_price > 0:
+                    # Cost components
+                    components = {
+                        'Base Transportation': original_price * 0.60,
+                        'Fuel Costs': original_price * 0.25,
+                        'Insurance & Safety': original_price * 0.08,
+                        'Tolls & Permits': original_price * 0.05,
+                        'Service Charges': original_price * 0.02
+                    }
+                    
+                    # Scenario impact
+                    scenario_impact = best_price - original_price
+                    if abs(scenario_impact) > 1:
+                        components[f'Scenario Impact ({scenario_used.split()[0]})'] = scenario_impact
+                    
+                    # Create pie chart
                     fig = px.pie(
                         values=list(components.values()),
                         names=list(components.keys()),
-                        title="Cost Structure Breakdown"
+                        title="Cost Structure Analysis"
                     )
                     fig.update_traces(textposition='inside', textinfo='percent+label')
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Enhanced cost metrics display
-                    st.markdown("#### 💰 Cost Summary")
-                    
-                    # Calculate metrics
-                    distance = route_info.get('distance_km', 1)
-                    cost_per_km = total_cost / distance if distance > 0 else 0
-                    total_with_gst = total_cost * 1.18
-                    
-                    # Display in clean cards
-                    metric_col1, metric_col2 = st.columns(2)
-                    
-                    with metric_col1:
-                        st.markdown(f"""
-                        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                        <h4 style="margin: 0; color: #1f4e79;">📏 Cost per KM</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">₹{cost_per_km:.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Cost metrics
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.metric("💳 Base Cost", f"₹{original_price:,.2f}")
+                        st.metric("📈 Final Cost", f"₹{best_price:,.2f}")
+                    with col_b:
+                        tax_amount = best_price * 0.18
+                        st.metric("💰 Total + GST", f"₹{(best_price + tax_amount):,.2f}")
                         
-                        st.markdown(f"""
-                        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px;">
-                        <h4 style="margin: 0; color: #1f4e79;">💰 Base Cost</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">₹{total_cost:,.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        if abs(scenario_impact) > 1:
+                            st.metric("🎭 Scenario Impact", f"₹{scenario_impact:+,.2f}")
                     
-                    with metric_col2:
-                        st.markdown(f"""
-                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                        <h4 style="margin: 0; color: #2e7d32;">📋 Total + GST (18%)</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #2e7d32;">₹{total_with_gst:,.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Savings calculation if applicable
-                        original_price = results.get('original_price', total_cost)
-                        if original_price != total_cost:
-                            savings = original_price - total_cost
-                            st.markdown(f"""
-                            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
-                            <h4 style="margin: 0; color: #f57c00;">💡 Savings</h4>
-                            <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #f57c00;">₹{savings:,.2f}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"""
-                            <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px;">
-                            <h4 style="margin: 0; color: #1f4e79;">📊 Distance</h4>
-                            <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">{distance:.0f} km</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    # Cost per km analysis
+                    distance = results.get('route_info', {}).get('distance_km', 1)
+                    if distance > 0:
+                        cost_per_km = best_price / distance
+                        st.metric("📏 Cost per KM", f"₹{cost_per_km:.2f}")
                 
-                else:
-                    st.warning("💰 Cost breakdown not available")
-                    
-                # Additional cost insights
-                st.markdown("#### 💡 Cost Insights")
-                vendor = results.get('best_vendor', 'Unknown')
-                if vendor != 'Unknown':
-                    st.info(f"**Selected Vendor:** {vendor}")
-                    st.info(f"**Route Distance:** {distance:.0f} km")
-                    if total_cost > 0:
-                        st.success(f"**Optimized Rate:** ₹{cost_per_km:.2f}/km")
-                        
-                        # Cost comparison
-                        if cost_per_km < 3.0:
-                            st.success("✅ Excellent rate - below ₹3/km")
-                        elif cost_per_km < 4.0:
-                            st.info("ℹ️ Good rate - competitive pricing")
-                        else:
-                            st.warning("⚠️ Premium rate - consider alternatives")
-        
-        with tab4:
-            st.subheader("📋 Strategic Summary & Recommendations")
+            except Exception as e:
+                st.warning(f"Cost breakdown unavailable: {e}")
+                
+            # Vendor recommendation insights
+            st.markdown("### 🏆 Vendor Selection Insights")
+            best_vendor = results.get('best_vendor', 'Unknown')
+            vendors = results.get('all_vendors')
             
-            # Executive Summary Section
+            if vendors is not None and not vendors.empty and best_vendor != 'Unknown':
+                vendor_row = vendors[vendors['vendor'] == best_vendor]
+                if not vendor_row.empty:
+                    vendor_info = vendor_row.iloc[0]
+                    
+                    st.markdown(f"""
+                    **Selected Vendor:** {best_vendor}
+                    
+                    **Key Strengths:**
+                    - Cost Efficiency: ₹{vendor_info.get('cost_per_km', 0):.2f}/km
+                    - Reliability Score: {vendor_info.get('reliability_score', 'N/A')}/10
+                    - Delivery Speed: {vendor_info.get('delivery_speed', 'Standard')}
+                    - Environmental Impact: {vendor_info.get('emission_per_km', 0):.2f} kg/km
+                    """)
+    
+    with tab4:
+        st.subheader("📋 Strategic Summary & Action Plan")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
             st.markdown("### 🎯 Executive Summary")
+            
+            # Get strategic reasoning
+            final_reasoning = results.get('crew_reasoning', 'Strategic analysis completed')
+            
+            # Create comprehensive summary
+            route_info = results.get('route_info', {})
+            risk_info = results.get('risk', {})
             
             summary_data = {
                 'scenario': scenario_used,
-                'route': f"{origin} → {destination}",
-                'distance': f"{distance:.0f} km",
-                'duration': duration,
-                'demand': f"{forecast_val:,.0f} orders",
-                'vendor': vendor,
-                'cost': f"₹{price:,.2f}",
-                'risk_level': risk_level
+                'route': f"{route_info.get('path', ['Unknown', 'Unknown'])[0]} → {route_info.get('path', ['Unknown', 'Unknown'])[1]}",
+                'distance': f"{route_info.get('distance_km', 0):.0f} km",
+                'duration': route_info.get('duration', 'Unknown'),
+                'demand': f"{results.get('forecast', 0):,.0f} orders",
+                'vendor': results.get('best_vendor', 'Unknown'),
+                'cost': f"₹{results.get('best_price', 0):,.2f}",
+                'risk_level': risk_info.get('risk_level', '🟡 Medium') if isinstance(risk_info, dict) else '🟡 Medium'
             }
             
-            # Create two columns for better layout
-            col1, col2 = st.columns(2)
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h3>🎬 Scenario: {summary_data['scenario']}</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div><b>🛣️ Route:</b> {summary_data['route']}</div>
+                <div><b>📏 Distance:</b> {summary_data['distance']}</div>
+                <div><b>⏱️ Duration:</b> {summary_data['duration']}</div>
+                <div><b>📈 Demand:</b> {summary_data['demand']}</div>
+                <div><b>🏆 Vendor:</b> {summary_data['vendor']}</div>
+                <div><b>💰 Cost:</b> {summary_data['cost']}</div>
+            </div>
+            <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                <b>⚠️ Risk Assessment:</b> {summary_data['risk_level']}
+            </div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            with col1:
-                st.markdown("#### 📊 Operation Details")
-                st.markdown(f"""
-                - **Scenario:** {summary_data['scenario']}
-                - **Route:** {summary_data['route']}
-                - **Distance:** {summary_data['distance']}
-                - **Duration:** {summary_data['duration']}
-                """)
-                
-            with col2:
-                st.markdown("#### 💼 Business Metrics")
-                st.markdown(f"""
-                - **Expected Demand:** {summary_data['demand']}
-                - **Selected Vendor:** {summary_data['vendor']}
-                - **Total Cost:** {summary_data['cost']}
-                - **Risk Level:** {summary_data['risk_level']}
-                """)
+            # AI Strategic Insights
+            st.markdown("### 🤖 AI Strategic Insights")
+            st.markdown(f"""
+            <div style="background: #0; padding: 1.5rem; border-radius: 0px; 
+                        border-left: 0px solid #28a745; margin-bottom: 1rem;">
+                {final_reasoning}
+            </div>
+            """, unsafe_allow_html=True)
             
-            st.markdown("---")
-            
-            # Strategic Insights Section
-            st.markdown("### 🤖 Strategic Insights & Recommendations")
-            
-            final_reasoning = results.get('crew_reasoning', 'Strategic analysis completed')
-            
-            # Display in a clean, structured way
-            if final_reasoning and len(final_reasoning) > 100:
-                # Use expander for long content
-                with st.expander("📖 View Detailed Strategic Analysis", expanded=True):
-                    st.markdown(final_reasoning)
-            else:
-                # Display shorter content directly
-                st.info(final_reasoning)
-            
-            st.markdown("---")
-            
-            # Action Items Section
-            st.markdown("### ✅ Recommended Action Items")
+            # Action items with priority
+            st.markdown("### ✅ Priority Action Items")
             
             action_items = [
-                f"**Immediate:** Confirm booking with {vendor} for route optimization",
-                f"**Preparation:** Ensure inventory capacity for {forecast_val:,.0f} orders",
-                f"**Monitoring:** Track delivery performance and cost efficiency",
-                f"**Risk Management:** Monitor weather conditions for {destination}",
-                f"**Follow-up:** Review performance metrics post-delivery"
+                {
+                    "priority": "🔴 URGENT",
+                    "action": f"Confirm booking with {summary_data['vendor']} within 2 hours",
+                    "timeline": "Immediate"
+                },
+                {
+                    "priority": "🟡 HIGH",
+                    "action": f"Monitor weather and traffic conditions for {summary_data['route'].split(' → ')[1]}",
+                    "timeline": "Daily until delivery"
+                },
+                {
+                    "priority": "🟡 HIGH", 
+                    "action": f"Prepare inventory for {summary_data['demand']} demand spike",
+                    "timeline": "Within 24 hours"
+                },
+                {
+                    "priority": "🟢 MEDIUM",
+                    "action": "Setup delivery tracking dashboard and notifications",
+                    "timeline": "Before shipment"
+                },
+                {
+                    "priority": "🟢 MEDIUM",
+                    "action": "Review performance metrics post-delivery for optimization",
+                    "timeline": "Post-delivery"
+                }
             ]
             
             for i, item in enumerate(action_items, 1):
-                st.markdown(f"{i}. {item}")
+                st.markdown(f"""
+                <div style="background:0; padding: 1rem; border-radius: 8px; 
+                            border: 1px solid #e9ecef; margin: 0.5rem 0;">
+                    <div style="display: flex; justify-content: between; align-items: center;">
+                        <div style="flex: 1;">
+                            <b>{i}. {item['action']}</b>
+                        </div>
+                        <div style="text-align: right; font-size: 0.8em;">
+                            <div>{item['priority']}</div>
+                            <div>⏰ {item['timeline']}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("### 📊 Performance Metrics")
             
-            st.markdown("---")
+            # System performance indicators
+            confidence_score = 85  # You can calculate this based on agent success rates
+            efficiency_score = min(100, 120 - (results.get('best_price', 5000) / 100))
+            sustainability_score = 70  # Based on vendor selection
+            risk_score = 90 if '🟢' in str(risk_info.get('risk_level', '')) else 70 if '🟡' in str(risk_info.get('risk_level', '')) else 40
             
-            # Performance Metrics and Export Section
-            col1, col2 = st.columns(2)
+            metrics = {
+                "🎯 Decision Confidence": f"{confidence_score}%",
+                "⚡ Cost Efficiency": f"{efficiency_score:.0f}%", 
+                "🌱 Sustainability Score": f"{sustainability_score}%",
+                "🛡️ Risk Mitigation": f"{risk_score}%",
+                "📈 Overall Performance": f"{(confidence_score + efficiency_score + sustainability_score + risk_score) / 4:.0f}%"
+            }
             
-            with col1:
-                st.markdown("### 📊 Performance Metrics")
-                
-                # System performance
-                system_health = results.get('system_health', {})
-                confidence = results.get('recommendations_confidence', {})
-                
-                # Display metrics in a cleaner format
-                metrics_data = {
-                    "System Health": system_health.get('overall_health', 'Unknown'),
-                    "Success Rate": system_health.get('success_rate', 'N/A'),
-                    "Confidence Level": confidence.get('score', 'N/A')
-                }
-                
-                for metric, value in metrics_data.items():
-                    st.markdown(f"- **{metric}:** {value}")
+            for metric, value in metrics.items():
+                st.metric(metric, value)
             
-            with col2:
-                st.markdown("### 📤 Export Options")
-                
-                # Prepare export data
-                export_data = {
-                    "analysis_timestamp": execution_time.isoformat() if execution_time else datetime.now().isoformat(),
-                    "scenario": scenario_used,
-                    "route_analysis": summary_data,
-                    "strategic_recommendations": final_reasoning,
-                    "system_metadata": results.get('execution_metadata', {})
-                }
-                
-                # Export buttons
-                json_data = json.dumps(export_data, indent=2, default=str)
+            # Export functionality
+            st.markdown("### 📤 Export & Reports")
+            
+            # Prepare export data
+            export_data = {
+                "analysis_timestamp": execution_time.isoformat(),
+                "scenario": scenario_used,
+                "route_analysis": summary_data,
+                "cost_breakdown": {
+                    "selected_vendor": results.get('best_vendor'),
+                    "total_cost": results.get('best_price'),
+                    "cost_per_km": results.get('best_price', 0) / max(1, route_info.get('distance_km', 1))
+                },
+                "risk_assessment": risk_info,
+                "strategic_recommendations": final_reasoning,
+                "performance_metrics": metrics
+            }
+            
+            # JSON export
+            json_data = json.dumps(export_data, indent=2, default=str)
+            st.download_button(
+                "📄 Download Executive Report (JSON)",
+                json_data,
+                file_name=f"supply_chain_analysis_{execution_time.strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+            
+            # CSV export for vendor data
+            vendors = results.get("all_vendors")
+            if vendors is not None and not vendors.empty:
+                csv_data = vendors.to_csv(index=False)
                 st.download_button(
-                    "📄 Download Full Report (JSON)",
-                    json_data,
-                    file_name=f"supply_chain_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
+                    "📊 Download Vendor Analysis (CSV)",
+                    csv_data,
+                    file_name=f"vendor_comparison_{execution_time.strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
                     use_container_width=True
                 )
-                
-                # CSV export for vendors
-                vendors = results.get("all_vendors")
-                if vendors is not None and not vendors.empty:
-                    csv_data = vendors.to_csv(index=False)
-                    st.download_button(
-                        "📊 Download Vendor Data (CSV)",
-                        csv_data,
-                        file_name=f"vendor_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                
-                st.markdown("---")
-                st.markdown("**💡 Tip:** Use JSON for complete analysis or CSV for vendor comparison data.")
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("### 🔧 System Information")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        **🤖 AI Multi-Agent System**
-        - 5 Specialized AI Agents
-        - CrewAI Orchestration  
-        - Real-time Decision Making
-        - Scenario-based Analysis
-        """)
-    
-    with col2:
-        st.markdown("""
-        **🔧 Integration & APIs**
-        - OpenAI GPT-4 Reasoning
-        - Google Maps Navigation
-        - WeatherAPI Monitoring  
-        - Dynamic Route Optimization
-        """)
-    
-    with col3:
-        st.markdown("""
-        **📊 Key Capabilities**
-        - ARIMA Demand Forecasting
-        - Multi-Vendor Cost Analysis
-        - Weather Risk Assessment
-        - Strategic Recommendations
-        """)
-    
+
+# Enhanced Footer
+st.markdown("---")
+st.markdown("### 🏢 System Information")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
     st.markdown("""
-    <div style="text-align: center; margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
-        <p style="margin: 0; color: #6c757d;">
-            🚀 <b>AI Supply Chain Optimizer</b> • Built with Multi-Agent Systems
-        </p>
-        <p style="margin: 0; color: #6c757d; font-size: 0.9em;">
-            <em>Powered by CrewAI • Streamlit • OpenAI GPT-4 • Google Maps API • WeatherAPI</em>
-        </p>
+    <div style="background: #0; padding: 1rem; border-radius: 8px;">
+    <h4>🤖 AI Multi-Agent System</h4>
+    <ul style="margin: 0; padding-left: 1rem;">
+    <li>5 Specialized AI Agents</li>
+    <li>CrewAI Orchestration</li>
+    <li>Real-time Decision Making</li>
+    <li>Scenario-based Analysis</li>
+    </ul>
     </div>
     """, unsafe_allow_html=True)
 
-if __name__ == "__main__":
-    main()
+with col2:
+    st.markdown("""
+    <div style="background: #0; padding: 1rem; border-radius: 8px;">
+    <h4>🔧 Integration & APIs</h4>
+    <ul style="margin: 0; padding-left: 1rem;">
+    <li>OpenAI GPT-4 Reasoning</li>
+    <li>Google Maps Navigation</li>
+    <li>WeatherAPI Monitoring</li>
+    <li>Dynamic Route Optimization</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown("""
+    <div style="background: #0; padding: 1rem; border-radius: 8px;">
+    <h4>📊 Key Capabilities</h4>
+    <ul style="margin: 0; padding-left: 1rem;">
+    <li>ARIMA Demand Forecasting</li>
+    <li>Multi-Vendor Cost Analysis</li>
+    <li>Weather Risk Assessment</li>
+    <li>Strategic Recommendations</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<div style="text-align: center; margin-top: 2rem; padding: 1rem; background: #0; border-radius: 8px;">
+    <p style="margin: 0; color: #6c757d;">
+        🚀 <b>AI Supply Chain Optimizer</b> • Built with ❤️ using Multi-Agent Systems
+    </p>
+    <p style="margin: 0; color: #6c757d; font-size: 0.9em;">
+        <em>Powered by CrewAI • Streamlit • OpenAI GPT-4 • Google Maps API • WeatherAPI</em>
+    </p>
+</div>
+""", unsafe_allow_html=True)
