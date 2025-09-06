@@ -356,7 +356,7 @@ results = orchestrator.run_comprehensive_analysis(
 ### 🚀 **Value Proposition**
 This project demonstrates how **specialized AI agents can collaborate** to solve complex, multi-dimensional problems that single AI systems cannot address effectively. The supply chain domain provides an ideal testing ground for multi-agent systems, showcasing parallel processing, domain expertise, and strategic coordination.
 
-**Contact**: [devbruha@gmail.com] | **Demo**: [https://huggingface.co/spaces/Bruha01/ai-multi-agent-supply-chain] | **Code**: [GitHub Repository]
+**Contact**: [devbruha@gmail.com] | **Demo**: [https://huggingface.co/spaces/Bruha01/ai-multi-agent-supply-chain]
 
 ---
 
