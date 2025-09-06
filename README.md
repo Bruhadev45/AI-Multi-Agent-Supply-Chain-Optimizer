@@ -196,11 +196,11 @@ LLM_Priority_Chain = [
 
 | Agent | Primary LLM | Free Alternative | Justification |
 |-------|-------------|------------------|---------------|
-| **Strategic Coordinator** | GPT-4 | Claude 3 Haiku | Requires sophisticated business reasoning |
-| **Demand Forecasting** | GPT-3.5 | Gemini Pro | Statistical analysis focus, less complex reasoning |
+| **Strategic Coordinator** | GPT-4 | Mistral 7B | Requires sophisticated business reasoning |
+| **Demand Forecasting** | GPT-3.5 | Mistral 7B | Statistical analysis focus, less complex reasoning |
 | **Route Optimization** | GPT-3.5 | Mistral 7B | Structured problem solving, geographic knowledge |
-| **Cost Analysis** | GPT-3.5 | Gemini Pro | Mathematical comparisons, structured data |
-| **Risk Assessment** | GPT-4 | Claude 3 Haiku | Complex scenario analysis, safety-critical decisions |
+| **Cost Analysis** | GPT-3.5 | Mistral 7B | Mathematical comparisons, structured data |
+| **Risk Assessment** | GPT-4 | Mistral 7B | Complex scenario analysis, safety-critical decisions |
 
 ---
 
@@ -210,7 +210,7 @@ LLM_Priority_Chain = [
 **🔗 Repository**: [AI-Multi-Agent-Supply-Chain-Optimizer](https://github.com/yourusername/ai-supply-chain-optimizer)
 
 ### Live Demo
-**🌐 Deployed Application**: [Streamlit Cloud Demo](https://ai-supply-chain-optimizer.streamlit.app)
+**🌐 Deployed Application**: [Hugging faces](https://huggingface.co/spaces/Bruha01/ai-multi-agent-supply-chain)
 
 ### Repository Structure
 ```
@@ -356,7 +356,7 @@ results = orchestrator.run_comprehensive_analysis(
 ### 🚀 **Value Proposition**
 This project demonstrates how **specialized AI agents can collaborate** to solve complex, multi-dimensional problems that single AI systems cannot address effectively. The supply chain domain provides an ideal testing ground for multi-agent systems, showcasing parallel processing, domain expertise, and strategic coordination.
 
-**Contact**: [Your Email] | **Demo**: [Live Application Link] | **Code**: [GitHub Repository]
+**Contact**: [devbruha@gmail.com] | **Demo**: [https://huggingface.co/spaces/Bruha01/ai-multi-agent-supply-chain] | **Code**: [GitHub Repository]
 
 ---
 
