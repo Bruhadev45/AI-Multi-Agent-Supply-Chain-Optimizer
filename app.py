@@ -33,42 +33,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (keeping only essential styling, removing complex CSS from strategic summary)
+# Fixed sidebar CSS only
 st.markdown("""
 <style>
-    .main-header {
-        background: linear-gradient(90deg, #FF6B6B 0%, #4ECDC4 100%);
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
+    .css-1d391kg {
+        position: fixed !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        z-index: 999 !important;
     }
-    .agent-card {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #4ECDC4;
-        margin: 0.5rem 0;
-    }
-    .metric-card {
-        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin: 0.5rem;
+    .main .block-container {
+        padding-left: 1rem;
+        max-width: none;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Main header
-st.markdown("""
-<div class="main-header">
-    <h1>🚀 Advanced AI Multi-Agent Supply Chain Optimizer</h1>
-    <p>Powered by CrewAI • Real-time Decision Making • Intelligent Orchestration</p>
-</div>
-""", unsafe_allow_html=True)
+# Simple header
+st.title("🚀 Advanced AI Multi-Agent Supply Chain Optimizer")
+st.markdown("**Powered by CrewAI • Real-time Decision Making • Intelligent Orchestration**")
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -78,6 +61,8 @@ def initialize_session_state():
         st.session_state.last_results = None
     if "execution_time" not in st.session_state:
         st.session_state.execution_time = None
+    if "risk_alerts" not in st.session_state:
+        st.session_state.risk_alerts = []
 
 def get_orchestrator():
     """Get or create orchestrator instance"""
@@ -219,6 +204,193 @@ def get_scenario_config(scenario):
     }
     return scenario_configs.get(scenario, scenario_configs["🟢 Normal Operations"])
 
+def generate_risk_alerts(results, scenario):
+    """Generate risk alerts based on analysis results"""
+    alerts = []
+    
+    # Weather-based alerts
+    risk_info = results.get('risk', {})
+    if isinstance(risk_info, dict):
+        risk_level = risk_info.get('risk_level', '')
+        condition = risk_info.get('condition', '')
+        
+        if 'High' in str(risk_level):
+            alerts.append({
+                'type': 'high',
+                'title': '🌩️ Weather Risk Alert',
+                'message': f"High weather risk detected: {condition}. Consider route alternatives or delivery delays.",
+                'timestamp': datetime.now()
+            })
+        elif 'rain' in str(condition).lower() or 'storm' in str(condition).lower():
+            alerts.append({
+                'type': 'medium',
+                'title': '🌧️ Weather Advisory',
+                'message': f"Weather condition: {condition}. Monitor closely for potential delays.",
+                'timestamp': datetime.now()
+            })
+    
+    # Cost-based alerts
+    cost = results.get('best_price', 0)
+    route_info = results.get('route_info', {})
+    distance = route_info.get('distance_km', 1)
+    
+    if distance > 0:
+        cost_per_km = cost / distance
+        if cost_per_km > 5.0:
+            alerts.append({
+                'type': 'high',
+                'title': '💰 High Cost Alert',
+                'message': f"Cost per km (₹{cost_per_km:.2f}) exceeds threshold. Review vendor selection.",
+                'timestamp': datetime.now()
+            })
+        elif cost_per_km > 4.0:
+            alerts.append({
+                'type': 'medium',
+                'title': '💸 Cost Advisory',
+                'message': f"Above average cost per km (₹{cost_per_km:.2f}). Consider cost optimization.",
+                'timestamp': datetime.now()
+            })
+    
+    # Scenario-based alerts
+    scenario_risk = get_scenario_config(scenario)['risk_level']
+    if scenario_risk == 'High':
+        alerts.append({
+            'type': 'high',
+            'title': '⚠️ Scenario Risk Alert',
+            'message': f"Current scenario '{scenario}' carries high operational risk. Implement contingency plans.",
+            'timestamp': datetime.now()
+        })
+    
+    # Demand-based alerts
+    forecast = results.get('forecast', 0)
+    if forecast > 1000:
+        alerts.append({
+            'type': 'medium',
+            'title': '📈 High Demand Alert',
+            'message': f"High demand forecast ({forecast:,.0f} orders). Ensure adequate capacity planning.",
+            'timestamp': datetime.now()
+        })
+    
+    return alerts
+
+def display_risk_monitor():
+    """Display real-time risk monitoring section"""
+    st.subheader("🛡️ Real-time Risk Monitor")
+    st.markdown("**Continuous monitoring and alerting system**")
+    st.markdown("Stay informed about potential risks affecting your supply chain operations.")
+    
+    if st.session_state.last_results:
+        results = st.session_state.last_results
+        scenario_used = st.session_state.get("scenario_used", "Unknown")
+        
+        # Generate current risk alerts
+        current_alerts = generate_risk_alerts(results, scenario_used)
+        st.session_state.risk_alerts = current_alerts
+        
+        # Risk Overview
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            risk_info = results.get('risk', {})
+            overall_risk = risk_info.get('risk_level', 'Medium') if isinstance(risk_info, dict) else 'Medium'
+            st.metric("🛡️ Overall Risk", overall_risk)
+        
+        with col2:
+            high_alerts = len([a for a in current_alerts if a['type'] == 'high'])
+            st.metric("🚨 Active Alerts", f"{len(current_alerts)} Total ({high_alerts} High)")
+        
+        with col3:
+            condition = risk_info.get('condition', 'Unknown') if isinstance(risk_info, dict) else 'Unknown'
+            st.metric("🌤️ Weather Risk", condition)
+        
+        with col4:
+            cost = results.get('best_price', 0)
+            route_info = results.get('route_info', {})
+            distance = route_info.get('distance_km', 1)
+            cost_per_km = cost / distance if distance > 0 else 0
+            st.metric("💰 Cost per KM", f"₹{cost_per_km:.2f}")
+        
+        # Active Alerts
+        if current_alerts:
+            st.subheader("🚨 Active Risk Alerts")
+            
+            for alert in current_alerts:
+                priority = "🔴 HIGH" if alert['type'] == 'high' else "🟡 MEDIUM" if alert['type'] == 'medium' else "🟢 LOW"
+                
+                with st.expander(f"{priority} - {alert['title']}", expanded=(alert['type'] == 'high')):
+                    st.write(alert['message'])
+                    st.caption(f"⏰ {alert['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            st.success("✅ No active risk alerts. All systems operating normally.")
+        
+        # Risk Trend Chart
+        st.subheader("📈 Risk Trend Analysis")
+        
+        # Generate sample risk trend data
+        hours = list(range(24))
+        risk_scores = []
+        base_score = 30 if 'High' in str(overall_risk) else (20 if 'Medium' in str(overall_risk) else 10)
+        
+        for hour in hours:
+            variation = np.sin(hour / 4) * 10 + np.random.normal(0, 3)
+            score = max(0, min(100, base_score + variation))
+            risk_scores.append(score)
+        
+        risk_df = pd.DataFrame({
+            'Hour': hours,
+            'Risk_Score': risk_scores
+        })
+        
+        fig = px.line(risk_df, x='Hour', y='Risk_Score', title='24-Hour Risk Score Trend')
+        fig.add_hline(y=60, line_dash="dash", line_color="red", annotation_text="High Risk Threshold")
+        fig.add_hline(y=30, line_dash="dash", line_color="orange", annotation_text="Medium Risk Threshold")
+        fig.update_layout(xaxis_title="Hour of Day", yaxis_title="Risk Score", yaxis_range=[0, 100])
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Risk Mitigation
+        st.subheader("💡 Risk Mitigation Recommendations")
+        
+        mitigation_actions = []
+        
+        if 'High' in str(overall_risk):
+            mitigation_actions.extend([
+                "🚨 **Immediate Action Required**: Activate contingency protocols",
+                "📞 **Communication**: Notify all stakeholders of elevated risk status",
+                "🔄 **Alternative Planning**: Prepare backup routes and vendors"
+            ])
+        
+        if high_alerts > 0:
+            mitigation_actions.extend([
+                "⚠️ **Priority Response**: Address high-priority alerts immediately",
+                "📊 **Enhanced Monitoring**: Increase monitoring frequency to 15-minute intervals"
+            ])
+        
+        if not mitigation_actions:
+            mitigation_actions = [
+                "✅ **Maintain Current Operations**: Continue standard monitoring protocols",
+                "📋 **Regular Reviews**: Conduct scheduled risk assessments",
+                "🔍 **Proactive Monitoring**: Stay alert for emerging risk factors"
+            ]
+        
+        for action in mitigation_actions:
+            st.markdown(f"- {action}")
+    
+    else:
+        st.info("🔄 Run an analysis to activate risk monitoring")
+        
+        # Demo interface
+        st.subheader("📊 Risk Monitoring Dashboard (Demo)")
+        demo_cols = st.columns(4)
+        with demo_cols[0]:
+            st.metric("🛡️ Overall Risk", "Monitoring Ready")
+        with demo_cols[1]:
+            st.metric("🚨 Active Alerts", "0 Active")
+        with demo_cols[2]:
+            st.metric("🌤️ Weather Risk", "Awaiting Data")
+        with demo_cols[3]:
+            st.metric("💰 Cost Risk", "Awaiting Analysis")
+
 def main():
     """Main application function"""
     
@@ -231,8 +403,6 @@ def main():
     # Sidebar configuration
     with st.sidebar:
         st.header("⚙️ Configuration Panel")
-        
-       
         
         # Route settings
         st.subheader("📍 Route Settings")
@@ -251,7 +421,7 @@ def main():
         
         st.markdown("---")
         
-        # Scenario Selection - Radio buttons instead of dropdown
+        # Scenario Selection
         st.subheader("🧪 Operational Scenarios")
         
         scenario_options = [
@@ -266,7 +436,7 @@ def main():
         scenario = st.radio(
             "Select Scenario:",
             scenario_options,
-            index=0,  # Default to Normal Operations
+            index=0,
             key="scenario_selection"
         )
         
@@ -276,6 +446,21 @@ def main():
         st.markdown(f"- **Demand:** {scenario_config['demand_multiplier']:.1%} of baseline")
         st.markdown(f"- **Cost:** {scenario_config['cost_multiplier']:.1%} of baseline")
         st.markdown(f"- **Risk Level:** {scenario_config['risk_level']}")
+        
+        st.markdown("---")
+        
+        # Quick Risk Status
+        if st.session_state.last_results:
+            st.subheader("🛡️ Quick Risk Status")
+            alerts = st.session_state.get('risk_alerts', [])
+            high_alerts = len([a for a in alerts if a['type'] == 'high'])
+            
+            if high_alerts > 0:
+                st.error(f"🚨 {high_alerts} High Risk Alert(s)")
+            elif len(alerts) > 0:
+                st.warning(f"⚠️ {len(alerts)} Active Alert(s)")
+            else:
+                st.success("✅ All Systems Normal")
         
         st.markdown("---")
         
@@ -289,6 +474,7 @@ def main():
         if clear_button:
             st.session_state.last_results = None
             st.session_state.execution_time = None
+            st.session_state.risk_alerts = []
             st.success("Results cleared!")
             time.sleep(1)
             st.rerun()
@@ -312,7 +498,7 @@ def main():
                 
                 # Run analysis
                 results = orchestrator.run_comprehensive_analysis(
-                    orders_csv=None,  # Will use sample data
+                    orders_csv=None,
                     origin=origin,
                     destination=destination,
                     scenario=scenario
@@ -346,51 +532,47 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             forecast_val = results.get('forecast', 0)
             st.metric("📈 Demand Forecast", f"{forecast_val:,.0f}")
             original_forecast = results.get('forecast_original', forecast_val)
             if original_forecast != forecast_val:
                 delta = forecast_val - original_forecast
                 st.caption(f"Δ {delta:+.0f} scenario impact")
-            st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             route_info = results.get('route_info', {})
             distance = route_info.get('distance_km', 0)
             st.metric("🛣️ Route Distance", f"{distance:.0f} km")
             duration = route_info.get('duration', 'Unknown')
             st.caption(f"Duration: {duration}")
-            st.markdown('</div>', unsafe_allow_html=True)
         
         with col3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             price = results.get('best_price', 0)
             st.metric("💰 Optimized Cost", f"₹{price:,.2f}")
             vendor = results.get('best_vendor', 'Unknown')
             st.caption(f"Vendor: {vendor}")
-            st.markdown('</div>', unsafe_allow_html=True)
         
         with col4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
             risk = results.get('risk', {})
-            risk_level = risk.get('risk_level', '🟡 Medium') if isinstance(risk, dict) else '🟡 Medium'
+            risk_level = risk.get('risk_level', 'Medium') if isinstance(risk, dict) else 'Medium'
             clean_risk = risk_level.replace('🔴', 'High').replace('🟡', 'Medium').replace('🟢', 'Low')
             st.metric("⚠️ Risk Level", clean_risk)
             condition = risk.get('condition', 'Unknown') if isinstance(risk, dict) else 'Unknown'
             st.caption(f"Weather: {condition}")
-            st.markdown('</div>', unsafe_allow_html=True)
         
         # Detailed Dashboard Tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["📈 Demand Analytics", "🗺️ Route Visualization", "💰 Cost Analysis", "📋 Strategic Summary"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🛡️ Risk Monitor", "📈 Demand Analytics", "🗺️ Route Visualization", "💰 Cost Analysis", "📋 Strategic Summary"])
         
         with tab1:
+            display_risk_monitor()
+        
+        with tab2:
             col1, col2 = st.columns(2)
             
             with col1:
                 st.subheader("📊 Demand Forecast Analysis")
-                
+                st.markdown("Analyze historical demand patterns and forecast future trends.")
+
                 # Create sample trend data
                 dates = pd.date_range(start='2024-01-01', periods=30, freq='D')
                 base_demand = 100
@@ -432,11 +614,12 @@ def main():
                 
                 st.info(f"**Current Scenario:** {scenario_used}")
         
-        with tab2:
+        with tab3:
             col1, col2 = st.columns([3, 1])
             
             with col1:
                 st.subheader("🗺️ Route Visualization")
+                st.markdown("Interactive map of the optimized delivery route.")
                 route_map = create_route_map(origin, destination, route_info)
                 st_folium(route_map, width=700, height=500)
             
@@ -462,7 +645,7 @@ def main():
                     efficiency_score = min(100, max(0, 100 - (distance / 20)))
                     st.metric("📊 Route Efficiency", f"{efficiency_score:.0f}%")
         
-        with tab3:
+        with tab4:
             col1, col2 = st.columns(2)
             
             with col1:
@@ -508,26 +691,28 @@ def main():
                         st.dataframe(display_vendors, use_container_width=True)
                         
                         # Quick insights
-                        col_a, col_b, col_c, col_d = st.columns(4)
+                        st.subheader("📊 Quick Insights")
+                        
+                        insights = []
+                        
                         if 'total_cost' in vendors.columns:
-                            with col_a:
-                                cheapest = vendors.loc[vendors['total_cost'].idxmin(), 'vendor']
-                                st.metric("💰 Most Cost-Effective", cheapest)
+                            cheapest = vendors.loc[vendors['total_cost'].idxmin(), 'vendor']
+                            insights.append(f"💰 **Most Cost-Effective:** {cheapest}")
                         
                         if 'customer_rating' in vendors.columns:
-                            with col_b:
-                                highest_rated = vendors.loc[vendors['customer_rating'].idxmax(), 'vendor']
-                                st.metric("🏆 Highest Rated", highest_rated)
+                            highest_rated = vendors.loc[vendors['customer_rating'].idxmax(), 'vendor']
+                            insights.append(f"🏆 **Highest Rated:** {highest_rated}")
                         
                         if 'emission_per_km' in vendors.columns:
-                            with col_c:
-                                greenest = vendors.loc[vendors['emission_per_km'].idxmin(), 'vendor']
-                                st.metric("🌱 Most Eco-Friendly", greenest)
+                            greenest = vendors.loc[vendors['emission_per_km'].idxmin(), 'vendor']
+                            insights.append(f"🌱 **Most Eco-Friendly:** {greenest}")
                         
                         if 'max_capacity_kg' in vendors.columns:
-                            with col_d:
-                                largest_capacity = vendors.loc[vendors['max_capacity_kg'].idxmax(), 'vendor']
-                                st.metric("📦 Largest Capacity", largest_capacity)
+                            largest_capacity = vendors.loc[vendors['max_capacity_kg'].idxmax(), 'vendor']
+                            insights.append(f"📦 **Largest Capacity:** {largest_capacity}")
+                        
+                        for insight in insights:
+                            st.markdown(f"- {insight}")
                     
                     with vendor_tab2:
                         # Detailed vendor information
@@ -676,63 +861,28 @@ def main():
                     fig.update_traces(textposition='inside', textinfo='percent+label')
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Enhanced cost metrics display
-                    st.markdown("#### 💰 Cost Summary")
+                    # Cost metrics
+                    st.subheader("💰 Cost Summary")
                     
-                    # Calculate metrics
                     distance = route_info.get('distance_km', 1)
                     cost_per_km = total_cost / distance if distance > 0 else 0
                     total_with_gst = total_cost * 1.18
                     
-                    # Display in clean cards
                     metric_col1, metric_col2 = st.columns(2)
                     
                     with metric_col1:
-                        st.markdown(f"""
-                        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                        <h4 style="margin: 0; color: #1f4e79;">📏 Cost per KM</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">₹{cost_per_km:.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.markdown(f"""
-                        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px;">
-                        <h4 style="margin: 0; color: #1f4e79;">💰 Base Cost</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">₹{total_cost:,.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.metric("📏 Cost per KM", f"₹{cost_per_km:.2f}")
+                        st.metric("💰 Base Cost", f"₹{total_cost:,.2f}")
                     
                     with metric_col2:
-                        st.markdown(f"""
-                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                        <h4 style="margin: 0; color: #2e7d32;">📋 Total + GST (18%)</h4>
-                        <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #2e7d32;">₹{total_with_gst:,.2f}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Savings calculation if applicable
-                        original_price = results.get('original_price', total_cost)
-                        if original_price != total_cost:
-                            savings = original_price - total_cost
-                            st.markdown(f"""
-                            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
-                            <h4 style="margin: 0; color: #f57c00;">💡 Savings</h4>
-                            <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #f57c00;">₹{savings:,.2f}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"""
-                            <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px;">
-                            <h4 style="margin: 0; color: #1f4e79;">📊 Distance</h4>
-                            <p style="margin: 0; font-size: 1.5em; font-weight: bold; color: #1f4e79;">{distance:.0f} km</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                        st.metric("📋 Total + GST (18%)", f"₹{total_with_gst:,.2f}")
+                        st.metric("📊 Distance", f"{distance:.0f} km")
                 
                 else:
                     st.warning("💰 Cost breakdown not available")
                     
-                # Additional cost insights
-                st.markdown("#### 💡 Cost Insights")
+                # Cost insights
+                st.subheader("💡 Cost Insights")
                 vendor = results.get('best_vendor', 'Unknown')
                 if vendor != 'Unknown':
                     st.info(f"**Selected Vendor:** {vendor}")
@@ -748,11 +898,11 @@ def main():
                         else:
                             st.warning("⚠️ Premium rate - consider alternatives")
         
-        with tab4:
+        with tab5:
             st.subheader("📋 Strategic Summary & Recommendations")
-            
-            # Executive Summary Section
-            st.markdown("### 🎯 Executive Summary")
+            st.markdown("Comprehensive overview and actionable insights for decision-making.")            
+            # Executive Summary
+            st.subheader("🎯 Executive Summary")
             
             summary_data = {
                 'scenario': scenario_used,
@@ -765,47 +915,39 @@ def main():
                 'risk_level': risk_level
             }
             
-            # Create two columns for better layout
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("#### 📊 Operation Details")
-                st.markdown(f"""
-                - **Scenario:** {summary_data['scenario']}
-                - **Route:** {summary_data['route']}
-                - **Distance:** {summary_data['distance']}
-                - **Duration:** {summary_data['duration']}
-                """)
+                st.markdown("**📊 Operation Details**")
+                st.markdown(f"- **Scenario:** {summary_data['scenario']}")
+                st.markdown(f"- **Route:** {summary_data['route']}")
+                st.markdown(f"- **Distance:** {summary_data['distance']}")
+                st.markdown(f"- **Duration:** {summary_data['duration']}")
                 
             with col2:
-                st.markdown("#### 💼 Business Metrics")
-                st.markdown(f"""
-                - **Expected Demand:** {summary_data['demand']}
-                - **Selected Vendor:** {summary_data['vendor']}
-                - **Total Cost:** {summary_data['cost']}
-                - **Risk Level:** {summary_data['risk_level']}
-                """)
+                st.markdown("**💼 Business Metrics**")
+                st.markdown(f"- **Expected Demand:** {summary_data['demand']}")
+                st.markdown(f"- **Selected Vendor:** {summary_data['vendor']}")
+                st.markdown(f"- **Total Cost:** {summary_data['cost']}")
+                st.markdown(f"- **Risk Level:** {summary_data['risk_level']}")
             
             st.markdown("---")
             
-            # Strategic Insights Section
-            st.markdown("### 🤖 Strategic Insights & Recommendations")
+            # Strategic Insights
+            st.subheader("💡 Strategic Insights & Recommendations")
             
-            final_reasoning = results.get('crew_reasoning', 'Strategic analysis completed')
+            final_reasoning = results.get('crew_reasoning', 'Strategic analysis completed by AI agents')
             
-            # Display in a clean, structured way
             if final_reasoning and len(final_reasoning) > 100:
-                # Use expander for long content
                 with st.expander("📖 View Detailed Strategic Analysis", expanded=True):
                     st.markdown(final_reasoning)
             else:
-                # Display shorter content directly
                 st.info(final_reasoning)
             
             st.markdown("---")
             
-            # Action Items Section
-            st.markdown("### ✅ Recommended Action Items")
+            # Action Items
+            st.subheader("✅ Recommended Action Items")
             
             action_items = [
                 f"**Immediate:** Confirm booking with {vendor} for route optimization",
@@ -820,39 +962,26 @@ def main():
             
             st.markdown("---")
             
-            # Performance Metrics and Export Section
+            # Export
+            st.subheader("📤 Export Analysis Data")
+            
+            export_data = {
+                "analysis_timestamp": execution_time.isoformat() if execution_time else datetime.now().isoformat(),
+                "scenario": scenario_used,
+                "route_analysis": summary_data,
+                "strategic_recommendations": final_reasoning,
+                "agent_results": {
+                    "demand_forecast": results.get('forecast', 0),
+                    "route_optimization": results.get('route_info', {}),
+                    "cost_analysis": results.get('best_price', 0),
+                    "weather_assessment": results.get('risk', {}),
+                    "vendor_recommendation": results.get('best_vendor', 'Unknown')
+                }
+            }
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("### 📊 Performance Metrics")
-                
-                # System performance
-                system_health = results.get('system_health', {})
-                confidence = results.get('recommendations_confidence', {})
-                
-                # Display metrics in a cleaner format
-                metrics_data = {
-                    "System Health": system_health.get('overall_health', 'Unknown'),
-                    "Success Rate": system_health.get('success_rate', 'N/A'),
-                    "Confidence Level": confidence.get('score', 'N/A')
-                }
-                
-                for metric, value in metrics_data.items():
-                    st.markdown(f"- **{metric}:** {value}")
-            
-            with col2:
-                st.markdown("### 📤 Export Options")
-                
-                # Prepare export data
-                export_data = {
-                    "analysis_timestamp": execution_time.isoformat() if execution_time else datetime.now().isoformat(),
-                    "scenario": scenario_used,
-                    "route_analysis": summary_data,
-                    "strategic_recommendations": final_reasoning,
-                    "system_metadata": results.get('execution_metadata', {})
-                }
-                
-                # Export buttons
                 json_data = json.dumps(export_data, indent=2, default=str)
                 st.download_button(
                     "📄 Download Full Report (JSON)",
@@ -861,8 +990,8 @@ def main():
                     mime="application/json",
                     use_container_width=True
                 )
-                
-                # CSV export for vendors
+            
+            with col2:
                 vendors = results.get("all_vendors")
                 if vendors is not None and not vendors.empty:
                     csv_data = vendors.to_csv(index=False)
@@ -873,53 +1002,47 @@ def main():
                         mime="text/csv",
                         use_container_width=True
                     )
-                
-                st.markdown("---")
-                st.markdown("**💡 Tip:** Use JSON for complete analysis or CSV for vendor comparison data.")
+                else:
+                    st.info("Vendor data not available for CSV export")
+            
+            st.markdown("**💡 Tip:** Use JSON for complete analysis or CSV for vendor comparison data.")
+    
+    # Risk Monitor as separate section when no results
+    else:
+        st.markdown("---")
+        st.info("👆 Configure your route settings and operational scenario in the sidebar, then click '🚀 Run Analysis' to begin.")
+
     
     # Footer
     st.markdown("---")
-    st.markdown("### 🔧 System Information")
+    st.subheader("🔧 System Information")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("""
-        **🤖 AI Multi-Agent System**
-        - 5 Specialized AI Agents
-        - CrewAI Orchestration  
-        - Real-time Decision Making
-        - Scenario-based Analysis
-        """)
+        st.markdown("**🤖 AI Multi-Agent System**")
+        st.markdown("- 5 Specialized AI Agents")
+        st.markdown("- CrewAI Orchestration")
+        st.markdown("- Real-time Decision Making")
+        st.markdown("- Scenario-based Analysis")
     
     with col2:
-        st.markdown("""
-        **🔧 Integration & APIs**
-        - OpenAI GPT-4 Reasoning
-        - Google Maps Navigation
-        - WeatherAPI Monitoring  
-        - Dynamic Route Optimization
-        """)
+        st.markdown("**🔧 Integration & APIs**")
+        st.markdown("- OpenAI GPT-4 Reasoning")
+        st.markdown("- Google Maps Navigation")
+        st.markdown("- WeatherAPI Monitoring")
+        st.markdown("- Dynamic Route Optimization")
     
     with col3:
-        st.markdown("""
-        **📊 Key Capabilities**
-        - ARIMA Demand Forecasting
-        - Multi-Vendor Cost Analysis
-        - Weather Risk Assessment
-        - Strategic Recommendations
-        """)
+        st.markdown("**📊 Key Capabilities**")
+        st.markdown("- ARIMA Demand Forecasting")
+        st.markdown("- Multi-Vendor Cost Analysis")
+        st.markdown("- Weather Risk Assessment")
+        st.markdown("- Strategic Recommendations")
     
-    st.markdown("""
-    <div style="text-align: center; margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
-        <p style="margin: 0; color: #6c757d;">
-            🚀 <b>AI Supply Chain Optimizer</b> • Built with Multi-Agent Systems
-        </p>
-        <p style="margin: 0; color: #6c757d; font-size: 0.9em;">
-            <em>Powered by CrewAI • Streamlit • OpenAI GPT-4 • Google Maps API • WeatherAPI</em>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("**🚀 AI Supply Chain Optimizer • Built with Multi-Agent Systems**")
+    st.markdown("*Powered by CrewAI • Streamlit • OpenAI GPT-4 • Google Maps API • WeatherAPI*")
 
 if __name__ == "__main__":
     main()
