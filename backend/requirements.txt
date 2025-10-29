@@ -1,0 +1,37 @@
+# Core Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Time Series & Statistics
+statsmodels>=0.14.0
+scipy>=1.10.0
+
+# Visualization (for data generation, not UI)
+plotly>=5.15.0
+matplotlib>=3.7.0
+folium>=0.14.0
+
+# Multi-Agent AI Framework (optional - requires Python 3.10+)
+# crewai>=0.5.0  # Uncomment if using Python 3.10+
+openai>=1.3.0
+
+# Vector Database & Embeddings
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
+# API & HTTP
+requests>=2.31.0
+httpx>=0.25.0
+
+# Data Processing & Utilities
+polyline>=2.0.0
+geopy>=2.3.0
+
+# Environment Configuration
+python-dotenv>=1.0.0
+
+# Additional Utilities
+tenacity>=8.2.0  # For retry logic
+pydantic>=2.0.0  # Data validation
