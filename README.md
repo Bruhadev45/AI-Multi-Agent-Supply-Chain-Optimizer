@@ -8,7 +8,7 @@ A professional, enterprise-grade logistics optimization system powered by 5 spec
 
 **🎉 Now deployed on Hugging Face Spaces!**
 
-Try it live: [Coming Soon - Add your Hugging Face Space URL here]
+Try it live: [https://huggingface.co/spaces/Bruha01/AI-supply-chain-optimizer]
 
 For deployment guide, see [HUGGINGFACE_DEPLOYMENT.md](HUGGINGFACE_DEPLOYMENT.md)
 
