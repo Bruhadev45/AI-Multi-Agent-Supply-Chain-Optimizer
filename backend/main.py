@@ -33,9 +33,12 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Next.js development
         "http://localhost:3001",
+        "http://localhost:7860",  # Hugging Face Spaces local
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-        # Add your production URLs here
+        "http://127.0.0.1:7860",
+        "https://*.hf.space",  # Hugging Face Spaces production
+        "*",  # Allow all origins for demo purposes
     ],
     allow_credentials=True,
     allow_methods=["*"],

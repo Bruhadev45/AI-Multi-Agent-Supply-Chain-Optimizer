@@ -1,0 +1,82 @@
+# Git
+.git
+.gitignore
+.github
+
+# Node modules (will be installed during build)
+frontend/node_modules
+node_modules
+
+# Next.js
+frontend/.next
+frontend/out
+.next
+out
+
+# Python
+backend/__pycache__
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.Python
+backend/venv
+backend/env
+backend/ENV
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+env
+ENV
+
+# Environment files (these should be set in Hugging Face Spaces)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.coverage
+*.cover
+.pytest_cache
+.jest
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Scripts
+*.sh
+!start.sh
+*.bat
+
+# Misc
+.claude
+.vercel
+dist
+build
+temp
+tmp

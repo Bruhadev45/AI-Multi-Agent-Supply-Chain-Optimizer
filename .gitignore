@@ -56,5 +56,48 @@ coverage/
 .temp/
 .tmp/
 
+# Deployment & Documentation (temporary/generated)
+PROJECT_STRUCTURE.md
+
+# Keep essential deployment and documentation files
+!Dockerfile
+!.dockerignore
+!README_HUGGINGFACE.md
+!HUGGINGFACE_DEPLOYMENT.md
+!DEPLOYMENT_CHECKLIST.md
+!CLEANUP_SUMMARY.md
+!GITHUB_DEPLOYMENT_SUCCESS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Package locks (optional - uncomment if causing conflicts)
+# package-lock.json
+# yarn.lock
+
 # Claude AI
 .claude/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Local scripts
+start-*.sh
+start-*.bat

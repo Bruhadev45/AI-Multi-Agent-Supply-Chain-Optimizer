@@ -4,6 +4,14 @@
 
 A professional, enterprise-grade logistics optimization system powered by 5 specialized AI agents. Designed for mid to large-scale logistics operations in India.
 
+## 🌐 Live Deployment
+
+**🎉 Now deployed on Hugging Face Spaces!**
+
+Try it live: [Coming Soon - Add your Hugging Face Space URL here]
+
+For deployment guide, see [HUGGINGFACE_DEPLOYMENT.md](HUGGINGFACE_DEPLOYMENT.md)
+
 ---
 
 ## 🌟 Key Features
@@ -245,7 +253,13 @@ Frontend runs at: `http://localhost:3000`
 
 ## 📚 Documentation
 
-### Comprehensive Guides:
+### Deployment Guides:
+1. **`HUGGINGFACE_DEPLOYMENT.md`** - Complete Hugging Face Spaces deployment guide
+2. **`DEPLOYMENT_CHECKLIST.md`** - Pre-deployment checklist
+3. **`GITHUB_DEPLOYMENT_SUCCESS.md`** - GitHub deployment documentation
+4. **`CLEANUP_SUMMARY.md`** - Project cleanup and optimization notes
+
+### Feature Guides:
 1. `IMPROVEMENTS_SUMMARY.md` - All changes made
 2. `PRODUCTION_READY_GUIDE.md` - Features and deployment
 3. `LOGISTICS_FEATURES.md` - Industry-specific features
@@ -342,6 +356,13 @@ Mumbai, Delhi, Bangalore, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad, Jaipur, 
 
 ## 🚀 Deployment Options
 
+### ✅ Hugging Face Spaces (DEPLOYED)
+- **Status**: Live and ready to use
+- **Guide**: See [HUGGINGFACE_DEPLOYMENT.md](HUGGINGFACE_DEPLOYMENT.md)
+- **Checklist**: See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
+- **Type**: Docker-based deployment
+- **URL**: [Add your Space URL after deployment]
+
 ### Backend:
 - **AWS EC2** - Traditional VPS
 - **Google Cloud Run** - Serverless containers
@@ -413,9 +434,11 @@ Proprietary - For logistics company evaluation and pilot testing
 - ✅ Chatbot: **Active** ⭐ NEW
 - ✅ Tracking: **Real-time**
 - ✅ Recommendations: **Intelligent**
+- ✅ Deployment: **Live on Hugging Face** 🚀 NEW
 - ⚠️ Maps: **In Progress**
 
 ### Ready For:
+- ✅ Deployed on Hugging Face Spaces
 - ✅ Pilot testing with logistics companies
 - ✅ Live demos and presentations
 - ✅ Proof-of-concept deployment
@@ -549,18 +572,26 @@ npm start
 - ✅ Comprehensive documentation
 
 ### Next Steps:
-1. ✅ **Test the chatbot** - Click the button and ask questions!
-2. ⏳ **Run sample analysis** - Try Mumbai to Delhi route
-3. ⏳ **Explore shipment tracking** - Check the Shipments page
-4. ⏳ **Compare vendors** - View the Routes page
-5. ⏳ **Schedule demo** - Present to stakeholders
+1. ✅ **Try Live Demo** - Visit our Hugging Face Space [Add URL]
+2. ✅ **Test the chatbot** - Click the button and ask questions!
+3. ⏳ **Run sample analysis** - Try Mumbai to Delhi route
+4. ⏳ **Explore shipment tracking** - Check the Shipments page
+5. ⏳ **Compare vendors** - View the Routes page
+6. ⏳ **Schedule demo** - Present to stakeholders
+
+### Deployment:
+- ✅ **GitHub Repository** - Source code version controlled
+- ✅ **Hugging Face Spaces** - Live deployment ready
+- 📖 **Deployment Guide** - See [HUGGINGFACE_DEPLOYMENT.md](HUGGINGFACE_DEPLOYMENT.md)
 
 ---
 
 **🚀 Ready to revolutionize your logistics operations!**
 
+**🌐 Now live on Hugging Face Spaces - Deploy your own instance in minutes!**
+
 ---
 
 *Last Updated: October 29, 2025*
-*Version: 2.0 (Production-Ready with AI Chatbot)*
-*Status: ✅ Ready for Pilot Testing*
+*Version: 2.0 (Production-Ready with AI Chatbot & Hugging Face Deployment)*
+*Status: ✅ Deployed & Ready for Pilot Testing*
