@@ -6,20 +6,23 @@ import { MainOptimizer } from "@/components/pages/main-optimizer"
 import { EnhancedAgentDetails } from "@/components/pages/enhanced-agent-details"
 import { VendorRoutes } from "@/components/pages/vendor-routes"
 import { ShipmentTracking } from "@/components/pages/shipment-tracking"
+import { Dashboard } from "@/components/pages/dashboard"
+import { Reports } from "@/components/pages/reports"
+import { Settings } from "@/components/pages/settings"
 import apiClient, { AnalysisResponse, Scenario, City, formatAPIError } from "@/lib/api-client"
 import { toast } from "@/hooks/use-toast"
 
-type Page = "dashboard" | "agents" | "vendors" | "shipments"
+export type Page = "optimizer" | "analytics" | "agents" | "vendors" | "shipments" | "reports" | "settings"
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState<Page>("dashboard")
+  const [currentPage, setCurrentPage] = useState<Page>("optimizer")
   const [analysisData, setAnalysisData] = useState<AnalysisResponse | null>(null)
+  const [analysisHistory, setAnalysisHistory] = useState<Array<{ data: AnalysisResponse; timestamp: string }>>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(false)
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
 
-  // Check API connection on mount
   useEffect(() => {
     const checkAPI = async () => {
       try {
@@ -38,7 +41,6 @@ export default function Home() {
     checkAPI()
   }, [])
 
-  // Load scenarios and cities
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -58,7 +60,6 @@ export default function Home() {
     }
   }, [apiConnected])
 
-  // Run analysis function
   const runAnalysis = useCallback(async (origin: string, destination: string, scenario: string) => {
     setLoading(true)
     try {
@@ -68,7 +69,11 @@ export default function Home() {
         scenario,
       })
       setAnalysisData(result)
-      setCurrentPage("dashboard") // Switch to dashboard to show results
+      setAnalysisHistory(prev => [
+        { data: result, timestamp: new Date().toISOString() },
+        ...prev.slice(0, 19)
+      ])
+      setCurrentPage("optimizer")
       toast({
         title: "Analysis Complete",
         description: `Successfully analyzed route from ${origin} to ${destination}`,
@@ -87,7 +92,7 @@ export default function Home() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case "optimizer":
         return (
           <MainOptimizer
             scenarios={scenarios}
@@ -97,12 +102,18 @@ export default function Home() {
             analysisData={analysisData}
           />
         )
+      case "analytics":
+        return <Dashboard analysisData={analysisData} loading={loading} />
       case "shipments":
         return <ShipmentTracking />
       case "agents":
         return <EnhancedAgentDetails analysisData={analysisData} />
       case "vendors":
         return <VendorRoutes analysisData={analysisData} />
+      case "reports":
+        return <Reports analysisData={analysisData} analysisHistory={analysisHistory} />
+      case "settings":
+        return <Settings apiConnected={apiConnected} />
       default:
         return (
           <MainOptimizer
@@ -117,7 +128,12 @@ export default function Home() {
   }
 
   return (
-    <MainLayout currentPage={currentPage} onPageChange={setCurrentPage}>
+    <MainLayout
+      currentPage={currentPage}
+      onPageChange={setCurrentPage}
+      apiConnected={apiConnected}
+      analysisData={analysisData}
+    >
       {renderPage()}
     </MainLayout>
   )

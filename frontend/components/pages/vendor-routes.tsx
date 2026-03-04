@@ -233,40 +233,33 @@ export function VendorRoutes({ analysisData }: VendorRoutesProps) {
         </Card>
       )}
 
-      {/* Route Alternatives */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[
-          { name: "Route A (Recommended)", distance: "1,240 km", time: "18h 30m", cost: "₹42,000", risk: "Low" },
-          { name: "Route B (Fastest)", distance: "1,180 km", time: "16h 45m", cost: "₹48,500", risk: "Medium" },
-        ].map((route, i) => (
-          <Card key={i} className="p-6 bg-card border border-border">
-            <h3 className="font-semibold text-foreground mb-4">{route.name}</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Distance</span>
-                <span className="text-foreground font-medium">{route.distance}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Estimated Time</span>
-                <span className="text-foreground font-medium">{route.time}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Cost</span>
-                <span className="text-foreground font-medium">{route.cost}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Risk Level</span>
-                <span className={`font-medium ${route.risk === "Low" ? "text-success" : "text-warning"}`}>
-                  {route.risk}
-                </span>
-              </div>
+      {/* Route Summary */}
+      {analysisData?.route_info && (
+        <Card className="p-6 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 border border-border">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" />
+            Route Summary
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Distance</p>
+              <p className="text-xl font-bold text-foreground mt-1">{analysisData.route_info.distance_km?.toLocaleString()} km</p>
             </div>
-            <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-              Use This Route
-            </Button>
-          </Card>
-        ))}
-      </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Duration</p>
+              <p className="text-xl font-bold text-foreground mt-1">{analysisData.route_info.duration}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Best Vendor</p>
+              <p className="text-xl font-bold text-foreground mt-1">{analysisData.best_vendor}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Cost</p>
+              <p className="text-xl font-bold text-foreground mt-1">₹{analysisData.best_price?.toLocaleString()}</p>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
