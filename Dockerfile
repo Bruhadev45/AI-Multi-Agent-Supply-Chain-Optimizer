@@ -27,15 +27,15 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and Node.js 20 from NodeSource
 RUN apt-get update && apt-get install -y \
     curl \
     gcc \
     g++ \
     make \
-    nodejs \
-    npm \
-    supervisor \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend requirements and install Python dependencies
@@ -52,36 +52,50 @@ COPY --from=frontend-builder /app/frontend/package.json ./frontend/
 COPY --from=frontend-builder /app/frontend/public ./frontend/public
 COPY frontend/next.config.mjs ./frontend/
 
-# Create startup script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "Starting AI Multi-Agent Supply Chain Optimizer..."\n\
-\n\
-# Start backend in background\n\
-cd /app/backend\n\
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 &\n\
-BACKEND_PID=$!\n\
-\n\
-# Wait for backend to be ready\n\
-echo "Waiting for backend to start..."\n\
-sleep 5\n\
-\n\
-# Start frontend\n\
-cd /app/frontend\n\
-NODE_ENV=production npm start -- --port 7860 --hostname 0.0.0.0 &\n\
-FRONTEND_PID=$!\n\
-\n\
-echo "Services started!"\n\
-echo "Backend PID: $BACKEND_PID"\n\
-echo "Frontend PID: $FRONTEND_PID"\n\
-\n\
-# Wait for any process to exit\n\
-wait -n\n\
-\n\
-# Exit with status of process that exited first\n\
-exit $?\n\
-' > /app/start.sh
+# Create startup script with proper health-check wait
+COPY <<'EOF' /app/start.sh
+#!/bin/bash
+
+echo "Starting AI Multi-Agent Supply Chain Optimizer..."
+
+# Start backend in background
+cd /app/backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+BACKEND_PID=$!
+
+# Wait for backend to actually respond (up to 60 seconds)
+echo "Waiting for backend to become healthy..."
+for i in $(seq 1 60); do
+  if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+    echo "Backend is healthy after ${i}s"
+    break
+  fi
+  if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    echo "ERROR: Backend process crashed during startup"
+    exit 1
+  fi
+  sleep 1
+done
+
+if ! curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+  echo "WARNING: Backend not healthy after 60s, starting frontend anyway..."
+fi
+
+# Start frontend
+cd /app/frontend
+NODE_ENV=production npx next start --port 7860 --hostname 0.0.0.0 &
+FRONTEND_PID=$!
+
+echo "Services started!"
+echo "  Backend PID: $BACKEND_PID (port 8000)"
+echo "  Frontend PID: $FRONTEND_PID (port 7860)"
+
+# Keep running until a process exits
+wait -n
+EXIT_CODE=$?
+echo "A process exited with code $EXIT_CODE"
+exit $EXIT_CODE
+EOF
 
 RUN chmod +x /app/start.sh
 
@@ -91,8 +105,8 @@ WORKDIR /app
 # Expose port 7860 (Hugging Face Spaces standard)
 EXPOSE 7860
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check - give enough time for both services to start
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
   CMD curl -f http://localhost:7860/ || exit 1
 
 # Start services
