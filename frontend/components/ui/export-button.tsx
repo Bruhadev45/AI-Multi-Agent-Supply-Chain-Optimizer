@@ -86,7 +86,7 @@ export function ExportButton({ data, filename = "analysis-results" }: ExportButt
     if (data.recommendations_confidence) {
       text += "--- CONFIDENCE METRICS ---\n"
       text += `Overall Score: ${data.recommendations_confidence.score}\n`
-      text += `Rationale: ${data.recommendations_confidence.rationale}\n\n`
+      text += `Confidence Level: ${data.recommendations_confidence.level}\n\n`
     }
 
     if (data.execution_metadata) {

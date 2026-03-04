@@ -487,8 +487,10 @@ class Orchestrator:
         
         distance = Config.get_distance(origin, destination)
         
+        emergency_price = distance * 3.5
         return {
             "forecast": 100.0,
+            "forecast_original": 100.0,
             "scenario_applied": scenario,
             "route_info": {
                 "path": [origin, destination],
@@ -497,16 +499,31 @@ class Orchestrator:
                 "source": "Emergency estimation"
             },
             "best_vendor": "Emergency Logistics",
-            "best_price": distance * 3.5,
-            "risk": {"risk_level": "🟡 Medium", "condition": "Unknown"},
+            "best_price": emergency_price,
+            "original_price": emergency_price,
+            "all_vendors": [],
+            "risk": {"risk_level": "🟡 Medium", "condition": "Unknown", "source": "Emergency Fallback"},
             "crew_reasoning": f"Emergency analysis for {origin} → {destination}. Manual review required.",
             "execution_metadata": {
                 "total_time_seconds": 0,
+                "success_rates": {"demand": False, "route": False, "cost": False, "risk": False},
                 "emergency_mode": True,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "execution_log": [],
+                "api_availability": self.api_availability if hasattr(self, 'api_availability') else {},
+                "ai_execution_mode": "Emergency"
             },
             "system_health": {"overall_health": "🔴 Emergency Mode"},
-            "recommendations_confidence": {"level": "🔴 Low", "score": "25%"}
+            "recommendations_confidence": {
+                "level": "🔴 Low",
+                "score": "25%",
+                "component_success": {
+                    "demand_forecasting": False,
+                    "route_optimization": False,
+                    "cost_analysis": False,
+                    "risk_assessment": False
+                }
+            }
         }
 
     def _calculate_system_health(self) -> Dict[str, Any]:

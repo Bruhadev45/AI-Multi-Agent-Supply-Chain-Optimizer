@@ -43,8 +43,10 @@ class DemandForecastAgent:
         self.forecast_history = []
         self.model_performance = {
             'arima': {'success_count': 0, 'total_attempts': 0},
-            'exponential': {'success_count': 0, 'total_attempts': 0},
-            'moving_average': {'success_count': 0, 'total_attempts': 0}
+            'exponential_smoothing': {'success_count': 0, 'total_attempts': 0},
+            'seasonal_decompose': {'success_count': 0, 'total_attempts': 0},
+            'moving_average': {'success_count': 0, 'total_attempts': 0},
+            'trend_forecast': {'success_count': 0, 'total_attempts': 0}
         }
         
         logger.info(f"DemandForecastAgent initialized with ARIMA order: {self.arima_order}")

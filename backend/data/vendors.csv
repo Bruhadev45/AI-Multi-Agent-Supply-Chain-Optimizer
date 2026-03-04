@@ -10,4 +10,4 @@ RailLink Express,2.1,0.15,9.0,Rail,8.9,10000,1500000,20,Rail-Network,Rail+Road,I
 LocalMover,1.8,0.5,6.5,Local,6.0,2000,300000,15,Mumbai-Local,Intra-City,None,+91-9876543218,local@localmover.in,2021,Mumbai,Business-Hours,Mobile-App,CNG,COD,3.5
 PremiumTransport,4.2,0.9,9.3,Premium,9.5,3500,2000000,25,Tier1-Cities,Luxury-Goods,ISO9001+Security,+91-9876543219,premium@premium.in,2014,Gurgaon,24/7,GPS+Security,Diesel,Net-15,4.9
 BulkCargo,1.9,1.2,7.5,Bulk,7.0,15000,800000,40,Industrial-Belt,Heavy-Industry,ISO9001,+91-9876543220,bulk@bulkcargo.in,2011,Ahmedabad,Business-Hours,GPS,Diesel,Net-45,3.9
-TechLogistics,3.1,0.4,8.7,Standard,8.5,5500,1300000,50,Tech-Hubs,Electronics,IS
+TechLogistics,3.1,0.4,8.7,Standard,8.5,5500,1300000,50,Tech-Hubs,Electronics,ISO9001,+91-9876543221,tech@techlogistics.in,2017,Hyderabad,24/7,GPS+IoT,Diesel+Electric,Net-30,4.4

@@ -147,7 +147,11 @@ export function VendorRoutes({ analysisData }: VendorRoutesProps) {
               </tr>
             </thead>
             <tbody>
-              {displayVendors.map((vendor, index) => (
+              {displayVendors.map((vendor: any, index: number) => {
+                const reliabilityPct = vendor.reliability ?? (vendor.reliability_score != null ? Math.round(vendor.reliability_score * 10) : 0)
+                const sustainabilityPct = vendor.sustainability ?? (vendor.emission_per_km != null ? Math.round(Math.max(0, (1 - vendor.emission_per_km) * 100)) : 0)
+                const ratingVal = vendor.rating ?? vendor.customer_rating ?? vendor.service_quality ?? 0
+                return (
                 <tr key={vendor.id || index} className="border-b border-border hover:bg-muted/50 transition-colors">
                   <td className="py-4 px-4 text-foreground font-medium">{vendor.name || vendor.vendor}</td>
                   <td className="py-4 px-4 text-foreground">
@@ -160,23 +164,23 @@ export function VendorRoutes({ analysisData }: VendorRoutesProps) {
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       <div className="w-full bg-muted rounded-full h-2 max-w-xs">
-                        <div className="bg-success h-2 rounded-full" style={{ width: `${vendor.reliability}%` }} />
+                        <div className="bg-success h-2 rounded-full" style={{ width: `${reliabilityPct}%` }} />
                       </div>
-                      <span className="text-sm text-foreground">{vendor.reliability}%</span>
+                      <span className="text-sm text-foreground">{reliabilityPct}%</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       <div className="w-full bg-muted rounded-full h-2 max-w-xs">
-                        <div className="bg-accent h-2 rounded-full" style={{ width: `${vendor.sustainability}%` }} />
+                        <div className="bg-accent h-2 rounded-full" style={{ width: `${sustainabilityPct}%` }} />
                       </div>
-                      <span className="text-sm text-foreground">{vendor.sustainability}%</span>
+                      <span className="text-sm text-foreground">{sustainabilityPct}%</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 fill-accent text-accent" />
-                      <span className="text-foreground font-medium">{vendor.rating}</span>
+                      <span className="text-foreground font-medium">{ratingVal}</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
@@ -190,7 +194,8 @@ export function VendorRoutes({ analysisData }: VendorRoutesProps) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </Card>

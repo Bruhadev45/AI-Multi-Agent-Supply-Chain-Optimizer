@@ -55,6 +55,7 @@ class RiskMonitorAgent:
                 risk_assessment = self._analyze_weather_risk(weather_data)
                 risk_assessment.update(weather_data)
                 risk_assessment['data_source'] = 'Weather API'
+                risk_assessment['source'] = 'Weather API'
                 
                 logger.info(f"Weather API successful: {risk_assessment['risk_level']}")
                 return risk_assessment
@@ -259,6 +260,7 @@ class RiskMonitorAgent:
                 'risk_factors': risk_factors,
                 'impact_description': impact,
                 'data_source': 'Intelligent Seasonal Estimation',
+                'source': 'Intelligent Seasonal Estimation',
                 'recommendations': self._get_risk_recommendations(base_risk, risk_factors)
             }
             
@@ -284,6 +286,7 @@ class RiskMonitorAgent:
             'risk_factors': ['Weather data unavailable'],
             'impact_description': 'Unable to assess weather conditions',
             'data_source': 'Emergency Fallback',
+            'source': 'Emergency Fallback',
             'recommendations': [
                 'Monitor local weather manually',
                 'Prepare for potential delays',

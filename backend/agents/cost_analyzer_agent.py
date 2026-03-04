@@ -1,6 +1,7 @@
 """
 Cost Analysis Agent for vendor comparison and optimization
 """
+import os
 import pandas as pd
 import numpy as np
 import logging
@@ -28,7 +29,7 @@ class CostAnalyzerAgent:
         """Load vendor data or create sample data"""
         try:
             # Try to load existing vendor file
-            if self.vendor_file and pd.io.common.file_exists(self.vendor_file):
+            if self.vendor_file and os.path.exists(self.vendor_file):
                 vendors = pd.read_csv(self.vendor_file)
                 logger.info(f"Loaded vendor data from {self.vendor_file}")
                 return self._validate_vendor_data(vendors)
