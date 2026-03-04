@@ -19,14 +19,26 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
 
-  // Check API connection on mount
+  // Check API connection on mount with retries for cold-start scenarios
   useEffect(() => {
+    let cancelled = false
     const checkAPI = async () => {
-      try {
-        await apiClient.healthCheck()
-        setApiConnected(true)
-      } catch (error) {
-        console.error('API connection failed:', error)
+      const maxRetries = 5
+      const retryDelayMs = 3000
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        if (cancelled) return
+        try {
+          await apiClient.healthCheck()
+          if (!cancelled) setApiConnected(true)
+          return
+        } catch (error) {
+          console.warn(`API health check attempt ${attempt}/${maxRetries} failed:`, error)
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, retryDelayMs))
+          }
+        }
+      }
+      if (!cancelled) {
         setApiConnected(false)
         toast({
           title: "API Connection Failed",
@@ -36,6 +48,7 @@ export default function Home() {
       }
     }
     checkAPI()
+    return () => { cancelled = true }
   }, [])
 
   // Load scenarios and cities
