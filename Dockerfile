@@ -15,7 +15,11 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ ./
 
-# Set production environment
+# Remove any .env files that could override the Docker ENV during build
+RUN rm -f .env .env.local .env.production .env.development
+
+# Set production environment — empty NEXT_PUBLIC_API_URL forces relative URLs
+# so requests go through Next.js rewrites to the backend on localhost:8000
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=''
 
